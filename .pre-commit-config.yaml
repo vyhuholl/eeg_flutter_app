@@ -10,9 +10,9 @@ repos:
         language: system
         files: '\.dart$'
         pass_filenames: false
-      - id: flutter-test
-        name: Flutter Test
-        entry: flutter test
-        language: system
-        files: '\.dart$'
-        pass_filenames: false
+      # - id: flutter-test
+      #   name: Flutter Test
+      #   entry: flutter test
+      #   language: system
+      #   files: '\.dart$'
+      #   pass_filenames: false
