@@ -1,0 +1,18 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+repos:
+  # Flutter specific formatting
+  - repo: local
+    hooks:
+      - id: flutter-analyze
+        name: Flutter Analyze
+        entry: flutter analyze
+        language: system
+        files: '\.dart$'
+        pass_filenames: false
+      - id: flutter-test
+        name: Flutter Test
+        entry: flutter test
+        language: system
+        files: '\.dart$'
+        pass_filenames: false
