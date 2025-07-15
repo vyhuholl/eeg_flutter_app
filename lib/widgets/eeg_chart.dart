@@ -3,6 +3,14 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:provider/provider.dart';
 import '../providers/eeg_data_provider.dart';
 
+/// Y-axis range for adaptive scaling
+class YAxisRange {
+  final double min;
+  final double max;
+
+  const YAxisRange({required this.min, required this.max});
+}
+
 /// Real-time EEG chart widget with time-based visualization
 class EEGChart extends StatelessWidget {
   final double height;
@@ -46,10 +54,13 @@ class EEGChart extends StatelessWidget {
       return _buildEmptyChart();
     }
 
+    // Calculate adaptive Y-axis range
+    final yAxisRange = _calculateAdaptiveYRange(lineChartData);
+
     return LineChartData(
       lineBarsData: lineChartData,
-      minY: 2300,
-      maxY: 2400,
+      minY: yAxisRange.min,
+      maxY: yAxisRange.max,
       titlesData: showAxes ? _buildTitlesData() : const FlTitlesData(show: false),
       gridData: showGridLines ? _buildGridData() : const FlGridData(show: false),
       borderData: _buildBorderData(),
@@ -58,11 +69,44 @@ class EEGChart extends StatelessWidget {
     );
   }
 
+  /// Calculate adaptive Y-axis range from chart data
+  YAxisRange _calculateAdaptiveYRange(List<LineChartBarData> lineChartData) {
+    if (lineChartData.isEmpty) {
+      return const YAxisRange(min: 2300, max: 2400); // fallback to default
+    }
+
+    double minY = double.infinity;
+    double maxY = double.negativeInfinity;
+
+    // Find min and max Y values across all data series
+    for (final lineData in lineChartData) {
+      for (final spot in lineData.spots) {
+        if (spot.y < minY) minY = spot.y;
+        if (spot.y > maxY) maxY = spot.y;
+      }
+    }
+
+    // Handle edge case where min and max are the same
+    if (minY == maxY) {
+      const padding = 50.0;
+      return YAxisRange(min: minY - padding, max: maxY + padding);
+    }
+
+    // Add padding (10% of range) to prevent data points from touching edges
+    final range = maxY - minY;
+    final padding = range * 0.1;
+    
+    return YAxisRange(
+      min: minY - padding,
+      max: maxY + padding,
+    );
+  }
+
   LineChartData _buildEmptyChart() {
     return LineChartData(
       lineBarsData: [],
-      minY: 2300,
-      maxY: 2400,
+      minY: 0,
+      maxY: 2500,
       titlesData: const FlTitlesData(show: false),
       gridData: const FlGridData(show: false),
       borderData: FlBorderData(show: false),
@@ -263,6 +307,9 @@ class CompactEEGChart extends StatelessWidget {
           );
         }
 
+        // Calculate adaptive Y-axis range for compact chart
+        final yAxisRange = _calculateCompactAdaptiveYRange(data);
+
         return Container(
           height: height,
           decoration: BoxDecoration(
@@ -282,8 +329,8 @@ class CompactEEGChart extends StatelessWidget {
                   belowBarData: BarAreaData(show: false),
                 ),
               ],
-              minY: 2300,
-              maxY: 2400,
+              minY: yAxisRange.min,
+              maxY: yAxisRange.max,
               titlesData: const FlTitlesData(show: false),
               gridData: const FlGridData(show: false),
               borderData: FlBorderData(show: false),
@@ -292,6 +339,37 @@ class CompactEEGChart extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+
+  /// Calculate adaptive Y-axis range for compact chart data
+  YAxisRange _calculateCompactAdaptiveYRange(List<FlSpot> data) {
+    if (data.isEmpty) {
+      return const YAxisRange(min: 2300, max: 2400); // fallback to default
+    }
+
+    double minY = double.infinity;
+    double maxY = double.negativeInfinity;
+
+    // Find min and max Y values in the data
+    for (final spot in data) {
+      if (spot.y < minY) minY = spot.y;
+      if (spot.y > maxY) maxY = spot.y;
+    }
+
+    // Handle edge case where min and max are the same
+    if (minY == maxY) {
+      const padding = 50.0;
+      return YAxisRange(min: minY - padding, max: maxY + padding);
+    }
+
+    // Add padding (10% of range) to prevent data points from touching edges
+    final range = maxY - minY;
+    final padding = range * 0.1;
+    
+    return YAxisRange(
+      min: minY - padding,
+      max: maxY + padding,
     );
   }
 } 
