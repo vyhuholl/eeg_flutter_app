@@ -1,66 +1,73 @@
-# Active Context - EEG Flutter App
+﻿# Active Context - EEG Flutter App
 
 ## Current Work Focus
-**Project Planning Phase** - Designing the architecture and implementation plan for EEG data visualization app
+**VAN MODE LEVEL 1** - Bug Fixes and Improvements
 
-## Recent Context
-- Fresh Flutter project created with default template
-- Project requirements defined: UDP data reception + real-time EEG visualization
-- Memory bank established with project documentation
+## Project Status: ACTIVE LEVEL 1 TASK
+- Flutter project with complete EEG UDP networking implementation
+- Real-time data processing and visualization system
+- Provider-based state management with multi-channel support
+- Full architecture matching documented system patterns
+- **CURRENT**: Bug fixes and UI improvements based on testing feedback
 
-## Current Task
-Creating comprehensive implementation plan for EEG Flutter app including:
-1. Technical architecture design
-2. Dependency selection and integration
-3. Implementation phases and milestones
-4. Development workflow planning
+## Current Task: EEG Flutter App Bug Fixes and Improvements
+**VAN MODE LEVEL 1:**
+- Task Type: Quick Bug Fix
+- Complexity: Level 1
+- Mode: VAN (no need for PLAN/CREATIVE modes)
+- Status: INITIALIZED
 
-## Next Steps (Immediate)
-1. **Dependency Selection**: Choose UDP networking and charting libraries
-2. **Project Structure**: Define folder structure and file organization
-3. **Core Components**: Plan implementation of main components
-4. **Development Phases**: Break down implementation into manageable phases
+## Task Focus Areas
 
-## Active Decisions and Considerations
+### 1. CRITICAL: JSON Frequency Keys Format
+- **Issue**: JSON keys are '1', '2', '3'... '49' 
+- **Fix**: Should be '1Hz', '2Hz', '3Hz'... '49Hz'
+- **Impact**: Affects data parsing and power spectrum processing
 
-### Technical Decisions Pending
-1. **UDP Library Choice**: 
-   - Option A: Native `dart:io` Socket
-   - Option B: Third-party UDP library (e.g., `udp`)
-   - **Consideration**: Performance vs. ease of use
+### 2. UI Cleanup Tasks
+- Remove 'Sample Rate' and 'Channel Count' settings
+- Remove 'Controls' panel entirely
+- Remove 'Channels' legend from EEG time series graph
+- Remove 'Capture' and 'Settings' buttons
+- Update default connection (0.0.0.0:2000)
 
-2. **Charting Library Choice**:
-   - Option A: `fl_chart` (popular, good performance)
-   - Option B: `syncfusion_flutter_charts` (feature-rich, commercial)
-   - Option C: Custom painting (maximum performance)
-   - **Consideration**: Performance vs. development time
+## Files to Modify
+- lib/models/eeg_data.dart - JSON parsing for Hz keys
+- lib/services/udp_receiver.dart - JSON parsing logic  
+- lib/services/data_processor.dart - Data processing for Hz keys
+- lib/widgets/eeg_chart.dart - Remove channels legend
+- lib/widgets/power_spectrum_chart.dart - Update for Hz keys
+- lib/screens/main_screen.dart - Remove UI elements
+- lib/providers/connection_provider.dart - Update defaults
+- lib/providers/eeg_data_provider.dart - Update for Hz keys
 
-3. **State Management**:
-   - Option A: `provider` (simple, well-integrated)
-   - Option B: `riverpod` (more features, better testing)
-   - Option C: `bloc` (complex but powerful)
-   - **Consideration**: Complexity vs. features needed
+## Implementation Strategy
+1. Start with critical JSON frequency keys fix
+2. Update all data processing components for Hz format
+3. Remove UI elements as specified
+4. Update default connection settings
+5. Test all changes work correctly
 
-### Implementation Approach
-- **Phase 1**: Basic UDP reception and data parsing
-- **Phase 2**: Simple visualization with static data
-- **Phase 3**: Real-time data streaming and visualization
-- **Phase 4**: UI polish and advanced features
+## System Status
+- **Architecture**: Established and working
+- **Technology Stack**: Flutter/Dart, Provider state management, fl_chart
+- **Data Processing**: Working but needs Hz key format fix
+- **Visualization**: Working but needs UI cleanup
+- **Performance**: Good, no performance issues to address
 
-## Key Considerations
-- **Performance**: Real-time data processing is critical
-- **Cross-platform**: Must work on mobile and desktop
-- **User Experience**: Clean, intuitive interface
-- **Reliability**: Stable UDP data reception
-
-## Questions to Address
-1. What is the expected EEG data format from the device?
-2. How many channels need to be displayed simultaneously?
-3. What sampling rate should we expect?
-4. Are there specific visualization requirements (colors, scaling, etc.)?
+## Next Steps
+1. Begin with JSON frequency keys fix in data models
+2. Update UDP receiver and data processor
+3. Update visualization components
+4. Remove UI elements
+5. Test all changes
 
 ## Current State
-- **Mode**: Planning
-- **Next**: Implementation planning and dependency selection
-- **Blockers**: None identified
-- **Ready**: For detailed implementation planning 
+- **Mode**: VAN Level 1
+- **Next**: Start implementation with JSON keys fix
+- **Blockers**: None - straightforward bug fixes
+- **Status**: Ready to begin implementation
+
+---
+
+

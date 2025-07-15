@@ -91,7 +91,7 @@ class ConnectionStatus extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildDetailRow('Device', '${connectionProvider.config.deviceAddress}:${connectionProvider.config.devicePort}'),
+        _buildDetailRow('Device', '${connectionProvider.connectionConfig.deviceAddress}:${connectionProvider.connectionConfig.devicePort}'),
         
         if (connectionProvider.isConnected) ...[
           _buildDetailRow('Connection Time', _formatDuration(connectionProvider.currentState.connectionDuration)),
@@ -310,26 +310,19 @@ class ConnectionConfigDialog extends StatefulWidget {
 class _ConnectionConfigDialogState extends State<ConnectionConfigDialog> {
   late TextEditingController _addressController;
   late TextEditingController _portController;
-  late TextEditingController _sampleRateController;
-  late TextEditingController _channelCountController;
 
   @override
   void initState() {
     super.initState();
     
-    final config = widget.connectionProvider.config;
-    _addressController = TextEditingController(text: config.deviceAddress);
-    _portController = TextEditingController(text: config.devicePort.toString());
-    _sampleRateController = TextEditingController(text: config.sampleRate.toString());
-    _channelCountController = TextEditingController(text: config.channelCount.toString());
+    _addressController = TextEditingController(text: widget.connectionProvider.connectionConfig.deviceAddress);
+    _portController = TextEditingController(text: widget.connectionProvider.connectionConfig.devicePort.toString());
   }
 
   @override
   void dispose() {
     _addressController.dispose();
     _portController.dispose();
-    _sampleRateController.dispose();
-    _channelCountController.dispose();
     super.dispose();
   }
 
@@ -345,7 +338,7 @@ class _ConnectionConfigDialogState extends State<ConnectionConfigDialog> {
               controller: _addressController,
               decoration: const InputDecoration(
                 labelText: 'Device Address',
-                hintText: '192.168.1.100',
+                hintText: '0.0.0.0',
               ),
             ),
             const SizedBox(height: 16),
@@ -353,28 +346,11 @@ class _ConnectionConfigDialogState extends State<ConnectionConfigDialog> {
               controller: _portController,
               decoration: const InputDecoration(
                 labelText: 'Device Port',
-                hintText: '12345',
+                hintText: '2000',
               ),
               keyboardType: TextInputType.number,
             ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _sampleRateController,
-              decoration: const InputDecoration(
-                labelText: 'Sample Rate (Hz)',
-                hintText: '250',
-              ),
-              keyboardType: TextInputType.number,
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _channelCountController,
-              decoration: const InputDecoration(
-                labelText: 'Channel Count',
-                hintText: '8',
-              ),
-              keyboardType: TextInputType.number,
-            ),
+
           ],
         ),
       ),
@@ -395,22 +371,18 @@ class _ConnectionConfigDialogState extends State<ConnectionConfigDialog> {
     try {
       final address = _addressController.text.trim();
       final port = int.parse(_portController.text.trim());
-      final sampleRate = int.parse(_sampleRateController.text.trim());
-      final channelCount = int.parse(_channelCountController.text.trim());
 
-      if (address.isEmpty || port <= 0 || sampleRate <= 0 || channelCount <= 0) {
+      if (address.isEmpty || port <= 0) {
         _showErrorDialog('Please enter valid values for all fields');
         return;
       }
 
-      final config = widget.connectionProvider.config.copyWith(
+      final connectionConfig = widget.connectionProvider.connectionConfig.copyWith(
         deviceAddress: address,
         devicePort: port,
-        sampleRate: sampleRate,
-        channelCount: channelCount,
       );
 
-      widget.connectionProvider.updateConfig(config);
+      widget.connectionProvider.updateConnectionConfig(connectionConfig);
       Navigator.of(context).pop();
     } catch (e) {
       _showErrorDialog('Invalid input: ${e.toString()}');

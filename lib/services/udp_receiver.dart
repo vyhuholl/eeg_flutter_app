@@ -1,14 +1,17 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import '../models/eeg_data.dart';
 import '../models/connection_state.dart';
 
-/// UDP receiver service for EEG data
+/// UDP receiver service for EEG data with JSON support
 class UDPReceiver {
   RawDatagramSocket? _socket;
   late StreamController<EEGSample> _dataController;
+  late StreamController<EEGJsonSample> _jsonDataController;
   late StreamController<ConnectionState> _connectionController;
+  late TimeDeltaProcessor _timeDeltaProcessor;
   
   Timer? _heartbeatTimer;
   Timer? _reconnectTimer;
@@ -22,6 +25,8 @@ class UDPReceiver {
   int _sequenceNumber = 0;
   int _packetsReceived = 0;
   int _packetsLost = 0;
+  int _jsonPacketsReceived = 0;
+  int _jsonParseErrors = 0;
   DateTime? _lastDataReceived;
   DateTime? _connectionStartTime;
   
@@ -33,11 +38,16 @@ class UDPReceiver {
 
   UDPReceiver() {
     _dataController = StreamController<EEGSample>.broadcast();
+    _jsonDataController = StreamController<EEGJsonSample>.broadcast();
     _connectionController = StreamController<ConnectionState>.broadcast();
+    _timeDeltaProcessor = TimeDeltaProcessor();
   }
 
-  /// Stream of EEG data samples
+  /// Stream of EEG data samples (legacy format)
   Stream<EEGSample> get dataStream => _dataController.stream;
+  
+  /// Stream of EEG JSON data samples (new format)
+  Stream<EEGJsonSample> get jsonDataStream => _jsonDataController.stream;
   
   /// Stream of connection state changes
   Stream<ConnectionState> get connectionStream => _connectionController.stream;
@@ -47,6 +57,9 @@ class UDPReceiver {
   
   /// Whether the receiver is currently running
   bool get isRunning => _isRunning;
+  
+  /// Time delta processor for JSON format
+  TimeDeltaProcessor get timeDeltaProcessor => _timeDeltaProcessor;
 
   /// Start receiving UDP data
   Future<void> start(String address, int port) async {
@@ -56,6 +69,9 @@ class UDPReceiver {
 
     _address = address;
     _port = port;
+    
+    // Reset time delta processor when starting
+    _timeDeltaProcessor.reset();
     
     await _connect();
   }
@@ -153,11 +169,7 @@ class UDPReceiver {
         _packetTimes.removeAt(0);
       }
       
-      // Create EEG sample from packet data
-      final sample = EEGSample.fromBytes(data, _sequenceNumber++);
-      
-      // Emit the sample
-      _dataController.add(sample);
+      _processJsonPacket(data);
       
       // Update connection state with new statistics
       _updateConnectionState(_currentState.copyWith(
@@ -170,6 +182,61 @@ class UDPReceiver {
     } catch (error) {
       debugPrint('Error processing packet: $error');
       // Don't emit error for individual packet processing failures
+    }
+  }
+
+  void _processJsonPacket(Uint8List data) {
+    try {
+      // Convert UDP data to string
+      final jsonString = utf8.decode(data);
+      
+      // Parse JSON sample
+      final jsonSample = EEGJsonSample.fromJson(
+        jsonString, 
+        _timeDeltaProcessor, 
+        _sequenceNumber++
+      );
+      
+      _jsonPacketsReceived++;
+      
+      // Emit JSON sample
+      _jsonDataController.add(jsonSample);
+      
+      // Also emit as legacy EEG sample for backward compatibility
+      final legacySample = jsonSample.toLegacyEEGSample();
+      _dataController.add(legacySample);
+      
+    } catch (e) {
+      _jsonParseErrors++;
+      debugPrint('JSON parsing error: $e');
+      
+      // Try to handle as missing/malformed data
+      if (e is EEGJsonParseException) {
+        _handleMalformedJsonData(e);
+      }
+    }
+  }
+
+  void _handleMalformedJsonData(EEGJsonParseException error) {
+    // Create a sample with predicted timestamp for continuity
+    try {
+      final predictedTimestamp = _timeDeltaProcessor.handleMissingDelta();
+      
+      final fallbackSample = EEGJsonSample(
+        timeDelta: 100.0, // Default 100ms
+        eegValue: 0.0, // Neutral value
+        absoluteTimestamp: predictedTimestamp,
+        sequenceNumber: _sequenceNumber++,
+      );
+      
+      _jsonDataController.add(fallbackSample);
+      
+      // Also emit as legacy sample
+      final legacySample = fallbackSample.toLegacyEEGSample();
+      _dataController.add(legacySample);
+      
+    } catch (e) {
+      debugPrint('Failed to create fallback sample: $e');
     }
   }
 
@@ -224,6 +291,8 @@ class UDPReceiver {
     _sequenceNumber = 0;
     _packetsReceived = 0;
     _packetsLost = 0;
+    _jsonPacketsReceived = 0;
+    _jsonParseErrors = 0;
     _lastDataReceived = null;
     _connectionStartTime = null;
     _packetTimes.clear();
@@ -243,10 +312,24 @@ class UDPReceiver {
     );
   }
 
+  /// Get JSON-specific statistics
+  Map<String, dynamic> get jsonStats {
+    return {
+      'jsonPacketsReceived': _jsonPacketsReceived,
+      'jsonParseErrors': _jsonParseErrors,
+      'parseSuccessRate': _jsonPacketsReceived > 0 
+        ? (_jsonPacketsReceived / (_jsonPacketsReceived + _jsonParseErrors)) * 100
+        : 0.0,
+      'timeDeltaProcessorStats': _timeDeltaProcessor.getStats(),
+    };
+  }
+
   /// Dispose of resources
   Future<void> dispose() async {
+    _timeDeltaProcessor.dispose();
     await stop();
     await _dataController.close();
+    await _jsonDataController.close();
     await _connectionController.close();
   }
 } 

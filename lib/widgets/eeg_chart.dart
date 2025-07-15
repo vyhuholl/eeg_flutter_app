@@ -2,21 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:provider/provider.dart';
 import '../providers/eeg_data_provider.dart';
-import '../services/data_processor.dart';
 
-/// Real-time EEG chart widget
+/// Real-time EEG chart widget with time-based visualization
 class EEGChart extends StatelessWidget {
   final double height;
   final bool showGridLines;
   final bool showAxes;
-  final bool showLegend;
 
   const EEGChart({
     super.key,
     this.height = 400,
     this.showGridLines = true,
     this.showAxes = true,
-    this.showLegend = true,
   });
 
   @override
@@ -28,8 +25,6 @@ class EEGChart extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
-              if (showLegend) _buildLegend(context, eegProvider),
-              if (showLegend) const SizedBox(height: 8),
               Expanded(
                 child: LineChart(
                   _buildLineChartData(eegProvider),
@@ -45,7 +40,7 @@ class EEGChart extends StatelessWidget {
   }
 
   LineChartData _buildLineChartData(EEGDataProvider eegProvider) {
-    final lineChartData = eegProvider.getLineChartData();
+    final lineChartData = eegProvider.getJsonLineChartData();
     
     if (lineChartData.isEmpty) {
       return _buildEmptyChart();
@@ -93,13 +88,24 @@ class EEGChart extends StatelessWidget {
         sideTitles: SideTitles(
           showTitles: true,
           reservedSize: 30,
-          interval: 5000, // 5 seconds
+          interval: 500, // 0.5 seconds (500ms)
           getTitlesWidget: (value, meta) {
             final date = DateTime.fromMillisecondsSinceEpoch(value.toInt());
-            return Text(
-              '${date.second}s',
-              style: const TextStyle(fontSize: 10),
-            );
+            final seconds = date.second;
+            final milliseconds = date.millisecond;
+            
+            // Show time in 0.5-second intervals
+            if (milliseconds < 250) {
+              return Text(
+                '${seconds}s',
+                style: const TextStyle(fontSize: 10),
+              );
+            } else {
+              return Text(
+                '$seconds.5s',
+                style: const TextStyle(fontSize: 10),
+              );
+            }
           },
         ),
       ),
@@ -109,12 +115,14 @@ class EEGChart extends StatelessWidget {
   }
 
   FlGridData _buildGridData() {
-    return const FlGridData(
+    return FlGridData(
       show: true,
       drawHorizontalLine: true,
-      drawVerticalLine: false,
+      drawVerticalLine: true,
       horizontalInterval: 100,
+      verticalInterval: 500, // 0.5 seconds
       getDrawingHorizontalLine: _getDrawingHorizontalLine,
+      getDrawingVerticalLine: _getDrawingVerticalLine,
     );
   }
 
@@ -123,6 +131,14 @@ class EEGChart extends StatelessWidget {
       color: Colors.grey.withValues(alpha: 0.3),
       strokeWidth: 1,
       dashArray: [5, 5],
+    );
+  }
+
+  static FlLine _getDrawingVerticalLine(double value) {
+    return FlLine(
+      color: Colors.grey.withValues(alpha: 0.2),
+      strokeWidth: 1,
+      dashArray: [3, 3],
     );
   }
 
@@ -140,8 +156,9 @@ class EEGChart extends StatelessWidget {
         getTooltipItems: (touchedSpots) {
           return touchedSpots.map((spot) {
             final date = DateTime.fromMillisecondsSinceEpoch(spot.x.toInt());
+            final timeStr = '${date.second}.${(date.millisecond / 100).floor()}s';
             return LineTooltipItem(
-              'CH${spot.barIndex + 1}\n${spot.y.toStringAsFixed(1)}\n${date.millisecond}ms',
+              'EEG: ${spot.y.toStringAsFixed(1)}\nTime: $timeStr',
               const TextStyle(
                 color: Colors.white,
                 fontSize: 12,
@@ -153,117 +170,66 @@ class EEGChart extends StatelessWidget {
       ),
     );
   }
+}
 
-  Widget _buildLegend(BuildContext context, EEGDataProvider eegProvider) {
-    final config = eegProvider.config;
-    
+/// Chart divider widget for dual visualization layout
+class ChartDivider extends StatelessWidget {
+  final bool isDraggable;
+  final VoidCallback? onToggleSpectrum;
+  final bool isSpectrumVisible;
+
+  const ChartDivider({
+    super.key,
+    this.isDraggable = true,
+    this.onToggleSpectrum,
+    this.isSpectrumVisible = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8),
+      height: 32,
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        border: Border.symmetric(
+          horizontal: BorderSide(color: Colors.grey.withValues(alpha: 0.3)),
+        ),
+      ),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
+          if (isDraggable)
+            Icon(
+              Icons.drag_handle,
+              color: Colors.grey.withValues(alpha: 0.6),
+              size: 16,
+            ),
+          if (isDraggable) const SizedBox(width: 8),
           Text(
-            'Channels: ',
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-          Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: List.generate(
-                  config.channelCount,
-                  (index) => _buildLegendItem(index, eegProvider),
-                ),
-              ),
+            'Power Spectrum',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Colors.grey[600],
+              fontWeight: FontWeight.w500,
             ),
           ),
-          _buildDataInfo(eegProvider),
+          if (onToggleSpectrum != null) const SizedBox(width: 8),
+          if (onToggleSpectrum != null)
+            IconButton(
+              icon: Icon(
+                isSpectrumVisible ? Icons.visibility : Icons.visibility_off,
+                size: 16,
+                color: Colors.grey.withValues(alpha: 0.6),
+              ),
+              onPressed: onToggleSpectrum,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(
+                minWidth: 24,
+                minHeight: 24,
+              ),
+            ),
         ],
       ),
     );
-  }
-
-  Widget _buildLegendItem(int channel, EEGDataProvider eegProvider) {
-    final config = eegProvider.config;
-    final signalQuality = eegProvider.signalQuality[channel];
-    
-    final colors = [
-      const Color(0xFF2196F3), // Blue
-      const Color(0xFF4CAF50), // Green
-      const Color(0xFFF44336), // Red
-      const Color(0xFF9C27B0), // Purple
-      const Color(0xFFFF9800), // Orange
-      const Color(0xFF00BCD4), // Cyan
-      const Color(0xFF8BC34A), // Light Green
-      const Color(0xFFE91E63), // Pink
-    ];
-
-    return Container(
-      margin: const EdgeInsets.only(right: 12),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 12,
-            height: 12,
-            decoration: BoxDecoration(
-              color: colors[channel % colors.length],
-              shape: BoxShape.circle,
-            ),
-          ),
-          const SizedBox(width: 4),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                config.channelNames[channel],
-                style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
-              ),
-              if (signalQuality != null)
-                Text(
-                  signalQuality.qualityText,
-                  style: TextStyle(
-                    fontSize: 8,
-                    color: _getQualityColor(signalQuality.level),
-                  ),
-                ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDataInfo(EEGDataProvider eegProvider) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          eegProvider.getSummaryStats(),
-          style: const TextStyle(fontSize: 10),
-        ),
-        Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(
-            color: eegProvider.isReceivingData ? Colors.green : Colors.red,
-            shape: BoxShape.circle,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Color _getQualityColor(SignalQualityLevel level) {
-    switch (level) {
-      case SignalQualityLevel.good:
-        return Colors.green;
-      case SignalQualityLevel.fair:
-        return Colors.orange;
-      case SignalQualityLevel.poor:
-        return Colors.red;
-    }
   }
 }
 
