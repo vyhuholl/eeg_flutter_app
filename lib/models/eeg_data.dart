@@ -95,8 +95,8 @@ class EEGJsonSample {
       throw EEGJsonParseException('Missing mandatory fields: d (time delta) and E (EEG value) are required');
     }
 
-    final timeDelta = _parseDouble(json['d'], 'time delta');
-    final eegValue = _parseDouble(json['E'], 'EEG value');
+    double timeDelta = _parseDouble(json['d']);
+    double eegValue = _parseDouble(json['E']);
 
     // Validate time delta range
     if (timeDelta <= 0 || timeDelta > 5000) {
@@ -110,7 +110,7 @@ class EEGJsonSample {
     for (int freq = 1; freq <= 49; freq++) {
       final key = '${freq}Hz';  // Changed from freq.toString() to '${freq}Hz'
       if (json.containsKey(key)) {
-        final power = _parseDouble(json[key], 'power at ${freq}Hz');
+        double power = _parseDouble(json[key]);
         if (power >= 0 && power <= 100) {
           spectrumData[freq] = power;
         }
@@ -133,11 +133,17 @@ class EEGJsonSample {
     );
   }
 
-  static double _parseDouble(dynamic value, String fieldName) {
-    if (value is num) {
+  /// Helper method to parse double from dynamic value
+  static double _parseDouble(dynamic value) {
+    if (value is double) {
+      return value;
+    } else if (value is int) {
       return value.toDouble();
+    } else if (value is String) {
+      return double.parse(value);
+    } else {
+      throw EEGJsonParseException('Invalid numeric value: $value (type: ${value.runtimeType})');
     }
-    throw EEGJsonParseException('Invalid $fieldName: expected number, got ${value.runtimeType}');
   }
 
   /// Check if spectrum data is available

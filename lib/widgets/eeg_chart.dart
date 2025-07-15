@@ -48,8 +48,8 @@ class EEGChart extends StatelessWidget {
 
     return LineChartData(
       lineBarsData: lineChartData,
-      minY: -500,
-      maxY: 500,
+      minY: 2300,
+      maxY: 2400,
       titlesData: showAxes ? _buildTitlesData() : const FlTitlesData(show: false),
       gridData: showGridLines ? _buildGridData() : const FlGridData(show: false),
       borderData: _buildBorderData(),
@@ -61,8 +61,8 @@ class EEGChart extends StatelessWidget {
   LineChartData _buildEmptyChart() {
     return LineChartData(
       lineBarsData: [],
-      minY: -500,
-      maxY: 500,
+      minY: 2300,
+      maxY: 2400,
       titlesData: const FlTitlesData(show: false),
       gridData: const FlGridData(show: false),
       borderData: FlBorderData(show: false),
@@ -282,8 +282,8 @@ class CompactEEGChart extends StatelessWidget {
                   belowBarData: BarAreaData(show: false),
                 ),
               ],
-              minY: -500,
-              maxY: 500,
+              minY: 2300,
+              maxY: 2400,
               titlesData: const FlTitlesData(show: false),
               gridData: const FlGridData(show: false),
               borderData: FlBorderData(show: false),
