@@ -132,21 +132,22 @@ class EEGChart extends StatelessWidget {
         sideTitles: SideTitles(
           showTitles: true,
           reservedSize: 30,
-          interval: 500, // 0.5 seconds (500ms)
+          interval: 10000, // 10 seconds (10000ms)
           getTitlesWidget: (value, meta) {
             final date = DateTime.fromMillisecondsSinceEpoch(value.toInt());
-            final seconds = date.second;
-            final milliseconds = date.millisecond;
+            final now = DateTime.now();
+            final diff = now.difference(date).inSeconds;
             
-            // Show time in 0.5-second intervals
-            if (milliseconds < 250) {
+            // Show relative time in seconds ago
+            if (diff <= 120) {
               return Text(
-                '${seconds}s',
+                '${diff}s',
                 style: const TextStyle(fontSize: 10),
               );
             } else {
+              // For times older than 120 seconds, show absolute seconds
               return Text(
-                '$seconds.5s',
+                '${date.second}s',
                 style: const TextStyle(fontSize: 10),
               );
             }
@@ -164,7 +165,7 @@ class EEGChart extends StatelessWidget {
       drawHorizontalLine: true,
       drawVerticalLine: true,
       horizontalInterval: 100,
-      verticalInterval: 500, // 0.5 seconds
+      verticalInterval: 10000, // 10 seconds (10000ms)
       getDrawingHorizontalLine: _getDrawingHorizontalLine,
       getDrawingVerticalLine: _getDrawingVerticalLine,
     );

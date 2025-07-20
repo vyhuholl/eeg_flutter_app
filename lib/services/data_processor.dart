@@ -15,6 +15,7 @@ class EEGDataProcessor {
   final Map<int, List<FlSpot>> _chartData = {};
   final List<FlSpot> _eegTimeSeriesData = [];
   final int _maxChartPoints = 1000; // Maximum points to display
+  final int _timeWindowSeconds = 120; // Show last 120 seconds of data
   
   EEGDataProcessor({required EEGConfig config}) 
     : _config = config,
@@ -40,7 +41,11 @@ class EEGDataProcessor {
     final timestamp = sample.absoluteTimestamp.millisecondsSinceEpoch.toDouble();
     _eegTimeSeriesData.add(FlSpot(timestamp, sample.eegValue));
     
-    // Maintain maximum points
+    // Remove data older than the time window (120 seconds)
+    final cutoffTime = DateTime.now().millisecondsSinceEpoch - (_timeWindowSeconds * 1000);
+    _eegTimeSeriesData.removeWhere((spot) => spot.x < cutoffTime);
+    
+    // Also maintain maximum points as a safety limit
     if (_eegTimeSeriesData.length > _maxChartPoints) {
       _eegTimeSeriesData.removeAt(0);
     }
@@ -51,8 +56,11 @@ class EEGDataProcessor {
     return _chartData[channel] ?? [];
   }
 
-  /// Get EEG time series data
-  List<FlSpot> get eegTimeSeriesData => List.from(_eegTimeSeriesData);
+  /// Get EEG time series data filtered to last 120 seconds
+  List<FlSpot> get eegTimeSeriesData {
+    final cutoffTime = DateTime.now().millisecondsSinceEpoch - (_timeWindowSeconds * 1000);
+    return _eegTimeSeriesData.where((spot) => spot.x >= cutoffTime).toList();
+  }
 
   /// Start periodic processing (if needed)
   void startProcessing() {
