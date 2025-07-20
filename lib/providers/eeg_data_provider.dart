@@ -36,14 +36,6 @@ class ChartConfig {
   }
 }
 
-/// Spectrum data status - simplified to always unavailable since spectrum removed
-enum SpectrumDataStatus {
-  unavailable,
-  partial,
-  stale,
-  available,
-}
-
 /// EEG data provider with Provider pattern
 class EEGDataProvider with ChangeNotifier {
   final EEGDataProcessor _dataProcessor;
@@ -51,7 +43,6 @@ class EEGDataProvider with ChangeNotifier {
   // Data subscriptions
   StreamSubscription<List<EEGSample>>? _dataSubscription;
   StreamSubscription<List<EEGJsonSample>>? _jsonDataSubscription;
-  // Spectrum subscription removed
   
   List<EEGSample> _latestSamples = [];
   List<EEGJsonSample> _latestJsonSamples = [];
@@ -71,7 +62,7 @@ class EEGDataProvider with ChangeNotifier {
   
   // Chart visibility controls
   bool _eegChartVisible = true;
-  bool _autoHideInactiveCharts = true;
+  final bool _autoHideInactiveCharts = true;
 
   EEGDataProvider({required EEGConfig config}) 
     : _dataProcessor = EEGDataProcessor(config: config) {
@@ -104,7 +95,6 @@ class EEGDataProvider with ChangeNotifier {
   
   /// Chart visibility
   bool get eegChartVisible => _eegChartVisible;
-  bool get spectrumChartVisible => false; // Always false since spectrum removed
   
   /// Data stream status
   bool get isReceivingData => _latestSamples.isNotEmpty;
@@ -134,20 +124,12 @@ class EEGDataProvider with ChangeNotifier {
   void _refreshData() {
     _isRefreshing = true;
     _updateCounter++;
-
-    // Update spectrum status - always unavailable since spectrum removed
-    _updateSpectrumStatus();
-
     // Update chart visibility based on data availability
     _updateAdaptiveVisibility();
 
     notifyListeners();
     
     _isRefreshing = false;
-  }
-
-  void _updateSpectrumStatus() {
-    // Spectrum functionality removed - no action needed
   }
 
   void _updateAdaptiveVisibility() {
@@ -170,8 +152,6 @@ class EEGDataProvider with ChangeNotifier {
       _onJsonSamplesReceived,
       onError: _onDataError,
     );
-    
-    // Spectrum subscription removed
     
     _dataProcessor.startProcessing();
   }
@@ -306,44 +286,13 @@ class EEGDataProvider with ChangeNotifier {
 
   /// Chart visibility controls
   void setChartVisibility(ChartVisibility visibility) {
-    switch (visibility) {
-      case ChartVisibility.eegOnly:
-        _eegChartVisible = true;
-        break;
-      case ChartVisibility.dual:
-        _eegChartVisible = true;
-        break;
-      case ChartVisibility.adaptive:
-        _autoHideInactiveCharts = true;
-        _eegChartVisible = true;
-        break;
-    }
+    _eegChartVisible = true;
     notifyListeners();
   }
 
   void setEEGChartVisible(bool visible) {
     _eegChartVisible = visible;
     notifyListeners();
-  }
-
-  void setSpectrumChartVisible(bool visible) {
-    // Always keep spectrum chart hidden since removed - no action needed
-    notifyListeners();
-  }
-
-  /// Spectrum data indicator methods - always false since spectrum removed
-  bool get hasSpectrumData => false;
-  
-  bool get isSpectrumDataFresh => false;
-  
-  bool get isSpectrumDataStale => false;
-
-  String get spectrumDataStatusText {
-    return 'Spectrum data removed';
-  }
-
-  Color get spectrumDataStatusColor {
-    return Colors.grey;
   }
 
   /// Performance metrics
@@ -376,7 +325,7 @@ class EEGDataProvider with ChangeNotifier {
   String getDataSummary() {
     final sampleCount = _latestJsonSamples.length;
     
-    return 'EEG Samples: $sampleCount, Spectrum: N/A (removed)';
+    return 'EEG Samples: $sampleCount';
   }
 
   /// Get signal quality summary

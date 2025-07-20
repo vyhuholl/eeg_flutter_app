@@ -9,14 +9,12 @@ import 'eeg_data_provider.dart';
 class ConnectionConfig {
   final String deviceAddress;
   final int devicePort;
-  final bool enableSpectrum;
   final double reconnectDelay;
   final int maxReconnectAttempts;
 
   const ConnectionConfig({
     this.deviceAddress = '0.0.0.0',
     this.devicePort = 2000,
-    this.enableSpectrum = true,
     this.reconnectDelay = 5.0,
     this.maxReconnectAttempts = 5,
   });
@@ -24,14 +22,12 @@ class ConnectionConfig {
   ConnectionConfig copyWith({
     String? deviceAddress,
     int? devicePort,
-    bool? enableSpectrum,
     double? reconnectDelay,
     int? maxReconnectAttempts,
   }) {
     return ConnectionConfig(
       deviceAddress: deviceAddress ?? this.deviceAddress,
       devicePort: devicePort ?? this.devicePort,
-      enableSpectrum: enableSpectrum ?? this.enableSpectrum,
       reconnectDelay: reconnectDelay ?? this.reconnectDelay,
       maxReconnectAttempts: maxReconnectAttempts ?? this.maxReconnectAttempts,
     );
@@ -54,13 +50,9 @@ class ConnectionProvider extends ChangeNotifier {
   // Connection attempt tracking
   int _reconnectAttempts = 0;
   
-  bool _spectrumDataAvailable = false;
-  DateTime? _lastSpectrumUpdate;
-  
   // Performance tracking
   int _jsonPacketsReceived = 0;
   int _binaryPacketsReceived = 0;
-  int _spectrumPacketsReceived = 0;
   
   ConnectionProvider({required EEGDataProvider eegDataProvider})
       : _eegDataProvider = eegDataProvider,
@@ -79,12 +71,6 @@ class ConnectionProvider extends ChangeNotifier {
   
   /// UDP receiver instance
   UDPReceiver get udpReceiver => _udpReceiver;
-  
-  /// Whether spectrum data is available
-  bool get spectrumDataAvailable => _spectrumDataAvailable;
-  
-  /// Last spectrum data update time
-  DateTime? get lastSpectrumUpdate => _lastSpectrumUpdate;
   
   /// Whether currently connected
   bool get isConnected => _currentState.isConnected;
@@ -106,9 +92,6 @@ class ConnectionProvider extends ChangeNotifier {
   
   /// Binary packet count
   int get binaryPacketsReceived => _binaryPacketsReceived;
-  
-  /// Spectrum packet count
-  int get spectrumPacketsReceived => _spectrumPacketsReceived;
 
   void _initializeSubscriptions() {
     // Listen to connection state changes
@@ -186,11 +169,8 @@ class ConnectionProvider extends ChangeNotifier {
     
     // Reset tracking variables
     _reconnectAttempts = 0;
-    _spectrumDataAvailable = false;
-    _lastSpectrumUpdate = null;
     _jsonPacketsReceived = 0;
     _binaryPacketsReceived = 0;
-    _spectrumPacketsReceived = 0;
   }
 
   /// Reconnect to EEG device
@@ -217,12 +197,6 @@ class ConnectionProvider extends ChangeNotifier {
   /// Update EEG configuration
   void updateEEGConfig(EEGConfig config) {
     _eegConfig = config;
-    notifyListeners();
-  }
-
-  /// Enable or disable spectrum data collection
-  void setSpectrumEnabled(bool enabled) {
-    _connectionConfig = _connectionConfig.copyWith(enableSpectrum: enabled);
     notifyListeners();
   }
 
@@ -268,11 +242,6 @@ class ConnectionProvider extends ChangeNotifier {
     
     // Forward JSON EEG data to the data provider
     _eegDataProvider.processJsonSample(sample);
-    
-    // Track data reception
-    _spectrumPacketsReceived++;
-    _spectrumDataAvailable = true;
-    _lastSpectrumUpdate = DateTime.now();
   }
 
   void _onDataError(error) {
@@ -297,7 +266,6 @@ class ConnectionProvider extends ChangeNotifier {
       buffer.writeln('Rate: ${_currentState.dataRate.toStringAsFixed(1)} pps');
       
       buffer.writeln('JSON: $_jsonPacketsReceived');
-      buffer.writeln('Spectrum: ${_spectrumDataAvailable ? 'Available' : 'N/A'}');
     }
     
     if (_currentState.hasError) {
@@ -320,9 +288,6 @@ class ConnectionProvider extends ChangeNotifier {
       'hasSignificantLoss': stats.hasSignificantLoss,
       'jsonPacketsReceived': _jsonPacketsReceived,
       'binaryPacketsReceived': _binaryPacketsReceived,
-      'spectrumPacketsReceived': _spectrumPacketsReceived,
-      'spectrumDataAvailable': _spectrumDataAvailable,
-      'lastSpectrumUpdate': _lastSpectrumUpdate?.toIso8601String(),
     };
   }
 
@@ -341,21 +306,10 @@ class ConnectionProvider extends ChangeNotifier {
            (timeSinceLastData?.inSeconds ?? 0) < 5;
   }
 
-  /// Check if spectrum data is being actively received
-  bool get isSpectrumDataHealthy {
-    if (!_spectrumDataAvailable || _lastSpectrumUpdate == null) return false;
-    
-    final timeSinceLastSpectrum = DateTime.now().difference(_lastSpectrumUpdate!);
-    return timeSinceLastSpectrum.inSeconds < 10; // Spectrum data within 10 seconds
-  }
-
   /// Get health status message
   String get healthStatusMessage {
     if (!_currentState.isConnected) return 'Disconnected';
     if (!isConnectionHealthy) return 'Poor connection quality';
-    if (_connectionConfig.enableSpectrum && !isSpectrumDataHealthy) {
-      return 'EEG data healthy, spectrum data missing';
-    }
     return 'Connection healthy';
   }
 

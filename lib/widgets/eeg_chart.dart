@@ -216,67 +216,6 @@ class EEGChart extends StatelessWidget {
   }
 }
 
-/// Chart divider widget for dual visualization layout
-class ChartDivider extends StatelessWidget {
-  final bool isDraggable;
-  final VoidCallback? onToggleSpectrum;
-  final bool isSpectrumVisible;
-
-  const ChartDivider({
-    super.key,
-    this.isDraggable = true,
-    this.onToggleSpectrum,
-    this.isSpectrumVisible = true,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 32,
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        border: Border.symmetric(
-          horizontal: BorderSide(color: Colors.grey.withValues(alpha: 0.3)),
-        ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          if (isDraggable)
-            Icon(
-              Icons.drag_handle,
-              color: Colors.grey.withValues(alpha: 0.6),
-              size: 16,
-            ),
-          if (isDraggable) const SizedBox(width: 8),
-          Text(
-            'Power Spectrum',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Colors.grey[600],
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          if (onToggleSpectrum != null) const SizedBox(width: 8),
-          if (onToggleSpectrum != null)
-            IconButton(
-              icon: Icon(
-                isSpectrumVisible ? Icons.visibility : Icons.visibility_off,
-                size: 16,
-                color: Colors.grey.withValues(alpha: 0.6),
-              ),
-              onPressed: onToggleSpectrum,
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(
-                minWidth: 24,
-                minHeight: 24,
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
 /// Compact EEG chart for overview display
 class CompactEEGChart extends StatelessWidget {
   final double height;
