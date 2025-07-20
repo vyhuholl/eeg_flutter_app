@@ -5,11 +5,9 @@ import 'package:fl_chart/fl_chart.dart';
 
 /// Enhanced data processor for EEG samples with JSON support
 class EEGDataProcessor {
-  final EEGBuffer _buffer;
   final EEGJsonBuffer _jsonBuffer;
   final EEGConfig _config;
   
-  late StreamController<List<EEGSample>> _processedDataController;
   late StreamController<List<EEGJsonSample>> _processedJsonDataController;
   Timer? _processingTimer;
   
@@ -20,15 +18,9 @@ class EEGDataProcessor {
   
   EEGDataProcessor({required EEGConfig config}) 
     : _config = config,
-      _buffer = EEGBuffer(config.bufferSize),
       _jsonBuffer = EEGJsonBuffer(config.bufferSize) {
-    _processedDataController = StreamController<List<EEGSample>>.broadcast();
     _processedJsonDataController = StreamController<List<EEGJsonSample>>.broadcast();
-    _initializeChartData();
   }
-
-  /// Stream of processed EEG data (legacy format)
-  Stream<List<EEGSample>> get processedDataStream => _processedDataController.stream;
   
   /// Stream of processed JSON EEG data
   Stream<List<EEGJsonSample>> get processedJsonDataStream => _processedJsonDataController.stream;
@@ -36,40 +28,11 @@ class EEGDataProcessor {
   /// Current EEG configuration
   EEGConfig get config => _config;
 
-  /// Initialize chart data structures
-  void _initializeChartData() {
-    for (int i = 0; i < _config.channelCount; i++) {
-      _chartData[i] = [];
-    }
-  }
-
-  /// Process a single EEG sample
-  void processSample(EEGSample sample) {
-    _buffer.add(sample);
-    _updateChartData(sample);
-    _processedDataController.add(_buffer.getLatest(100));
-  }
-
   /// Process a JSON EEG sample
   void processJsonSample(EEGJsonSample sample) {
     _jsonBuffer.add(sample);
     _updateEEGTimeSeriesData(sample);
     _processedJsonDataController.add(_jsonBuffer.getLatest(100));
-  }
-
-  /// Update chart data with new sample
-  void _updateChartData(EEGSample sample) {
-    final timestamp = sample.timestamp.millisecondsSinceEpoch.toDouble();
-    
-    for (int i = 0; i < sample.channels.length && i < _config.channelCount; i++) {
-      final chartData = _chartData[i]!;
-      chartData.add(FlSpot(timestamp, sample.channels[i]));
-      
-      // Maintain maximum points
-      if (chartData.length > _maxChartPoints) {
-        chartData.removeAt(0);
-      }
-    }
   }
 
   /// Update EEG time series data for JSON samples
@@ -129,11 +92,6 @@ class EEGDataProcessor {
     return value; // Placeholder - implement actual filtering if needed
   }
 
-  /// Get latest processed samples
-  List<EEGSample> getLatestSamples([int count = 100]) {
-    return _buffer.getLatest(count);
-  }
-
   /// Get latest JSON samples
   List<EEGJsonSample> getLatestJsonSamples([int count = 100]) {
     return _jsonBuffer.getLatest(count);
@@ -141,7 +99,6 @@ class EEGDataProcessor {
 
   /// Clear all data
   void clearAll() {
-    _buffer.clear();
     _jsonBuffer.clear();
     _chartData.forEach((key, value) => value.clear());
     _eegTimeSeriesData.clear();
@@ -149,11 +106,9 @@ class EEGDataProcessor {
 
   /// Get data statistics
   Map<String, dynamic> getStatistics() {
-    final legacySampleCount = _buffer.length;
     final jsonSampleCount = _jsonBuffer.length;
     
     return {
-      'legacySamples': legacySampleCount,
       'jsonSamples': jsonSampleCount,
       'chartPoints': _eegTimeSeriesData.length,
       'bufferSize': _config.bufferSize,
@@ -208,7 +163,6 @@ class EEGDataProcessor {
   /// Dispose of resources
   void dispose() {
     stopProcessing();
-    _processedDataController.close();
     _processedJsonDataController.close();
   }
 }

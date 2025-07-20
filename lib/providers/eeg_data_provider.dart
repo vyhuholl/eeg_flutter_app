@@ -41,18 +41,16 @@ class EEGDataProvider with ChangeNotifier {
   final EEGDataProcessor _dataProcessor;
   
   // Data subscriptions
-  StreamSubscription<List<EEGSample>>? _dataSubscription;
   StreamSubscription<List<EEGJsonSample>>? _jsonDataSubscription;
   
-  List<EEGSample> _latestSamples = [];
   List<EEGJsonSample> _latestJsonSamples = [];
   
   final Map<int, List<FlSpot>> _chartData = {};
   final Map<int, SignalQuality> _signalQuality = {};
   
   // Display settings
-  int _selectedChannel = 0;
-  bool _showAllChannels = true;
+  final int _selectedChannel = 0;
+  final bool _showAllChannels = true;
   ChartConfig _chartConfig = const ChartConfig();
   
   // Performance optimization
@@ -66,12 +64,8 @@ class EEGDataProvider with ChangeNotifier {
 
   EEGDataProvider({required EEGConfig config}) 
     : _dataProcessor = EEGDataProcessor(config: config) {
-    _initializeChartData();
     _setupRefreshTimer();
   }
-
-  /// Latest EEG samples
-  List<EEGSample> get latestSamples => _latestSamples;
   
   /// Latest JSON EEG samples
   List<EEGJsonSample> get latestJsonSamples => _latestJsonSamples;
@@ -97,19 +91,8 @@ class EEGDataProvider with ChangeNotifier {
   bool get eegChartVisible => _eegChartVisible;
   
   /// Data stream status
-  bool get isReceivingData => _latestSamples.isNotEmpty;
   bool get isReceivingJsonData => _latestJsonSamples.isNotEmpty;
 
-  void _initializeChartData() {
-    for (int i = 0; i < config.channelCount; i++) {
-      _chartData[i] = [];
-      _signalQuality[i] = SignalQuality(
-        quality: QualityLevel.good,
-        score: 0.7,
-        metrics: {},
-      );
-    }
-  }
 
   void _setupRefreshTimer() {
     _refreshTimer?.cancel();
@@ -143,11 +126,6 @@ class EEGDataProvider with ChangeNotifier {
 
   /// Start listening to data updates
   void startDataStream() {
-    _dataSubscription = _dataProcessor.processedDataStream.listen(
-      _onSamplesReceived,
-      onError: _onDataError,
-    );
-    
     _jsonDataSubscription = _dataProcessor.processedJsonDataStream.listen(
       _onJsonSamplesReceived,
       onError: _onDataError,
@@ -158,28 +136,14 @@ class EEGDataProvider with ChangeNotifier {
 
   /// Stop listening to data updates
   void stopDataStream() {
-    _dataSubscription?.cancel();
-    _dataSubscription = null;
     _jsonDataSubscription?.cancel();
     _jsonDataSubscription = null;
     _dataProcessor.stopProcessing();
   }
 
-  /// Process a new EEG sample
-  void processSample(EEGSample sample) {
-    _dataProcessor.processSample(sample);
-  }
-
   /// Process a new JSON EEG sample
   void processJsonSample(EEGJsonSample sample) {
     _dataProcessor.processJsonSample(sample);
-  }
-
-  void _onSamplesReceived(List<EEGSample> samples) {
-    _latestSamples = samples;
-    _updateChartDataFromSamples(samples);
-    _updateSignalQuality();
-    notifyListeners();
   }
 
   void _onJsonSamplesReceived(List<EEGJsonSample> samples) {
@@ -190,24 +154,6 @@ class EEGDataProvider with ChangeNotifier {
 
   void _onDataError(error) {
     debugPrint('EEG data error: $error');
-  }
-
-  void _updateChartDataFromSamples(List<EEGSample> samples) {
-    for (final sample in samples) {
-      final timestamp = sample.timestamp.millisecondsSinceEpoch.toDouble();
-      
-      for (int i = 0; i < sample.channels.length && i < config.channelCount; i++) {
-        final channelData = _chartData[i] ?? [];
-        channelData.add(FlSpot(timestamp, sample.channels[i]));
-        
-        // Maintain reasonable chart data size
-        while (channelData.length > 1000) {
-          channelData.removeAt(0);
-        }
-        
-        _chartData[i] = channelData;
-      }
-    }
   }
 
   void _updateEEGChartData(List<EEGJsonSample> samples) {
@@ -225,13 +171,6 @@ class EEGDataProvider with ChangeNotifier {
     }
     
     _chartData[0] = channelData;
-  }
-
-  void _updateSignalQuality() {
-    for (int i = 0; i < config.channelCount; i++) {
-      final samples = _latestJsonSamples.take(100).toList();
-      _signalQuality[i] = _dataProcessor.assessSignalQuality(samples);
-    }
   }
 
   /// Get EEG time series data for charts
@@ -256,25 +195,6 @@ class EEGDataProvider with ChangeNotifier {
         belowBarData: BarAreaData(show: false),
       ),
     ];
-  }
-
-  /// Get chart data for a specific channel
-  List<FlSpot> getChannelData(int channel) {
-    return _chartData[channel] ?? [];
-  }
-
-  /// Select active channel
-  void selectChannel(int channel) {
-    if (channel >= 0 && channel < config.channelCount) {
-      _selectedChannel = channel;
-      notifyListeners();
-    }
-  }
-
-  /// Toggle show all channels
-  void toggleShowAllChannels() {
-    _showAllChannels = !_showAllChannels;
-    notifyListeners();
   }
 
   /// Update chart configuration
@@ -312,10 +232,8 @@ class EEGDataProvider with ChangeNotifier {
 
   /// Data management
   void clearData() {
-    _latestSamples = [];
     _latestJsonSamples = [];
     _updateCounter = 0;
-    _initializeChartData();
     
     _dataProcessor.clearAll();
     notifyListeners();
@@ -344,4 +262,4 @@ class EEGDataProvider with ChangeNotifier {
     _dataProcessor.dispose();
     super.dispose();
   }
-} 
+}

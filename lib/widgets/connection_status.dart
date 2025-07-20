@@ -410,16 +410,12 @@ class _ConnectionConfigDialogState extends State<ConnectionConfigDialog> {
 extension EEGConfigExtension on EEGConfig {
   EEGConfig copyWith({
     int? sampleRate,
-    int? channelCount,
-    List<String>? channelNames,
     String? deviceAddress,
     int? devicePort,
     int? bufferSize,
   }) {
     return EEGConfig(
       sampleRate: sampleRate ?? this.sampleRate,
-      channelCount: channelCount ?? this.channelCount,
-      channelNames: channelNames ?? this.channelNames,
       deviceAddress: deviceAddress ?? this.deviceAddress,
       devicePort: devicePort ?? this.devicePort,
       bufferSize: bufferSize ?? this.bufferSize,

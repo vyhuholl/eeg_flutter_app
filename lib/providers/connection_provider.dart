@@ -40,7 +40,6 @@ class ConnectionProvider extends ChangeNotifier {
   final EEGDataProvider _eegDataProvider;
   
   StreamSubscription<ConnectionState>? _connectionSubscription;
-  StreamSubscription<EEGSample>? _dataSubscription;
   StreamSubscription<EEGJsonSample>? _jsonDataSubscription;
   
   ConnectionState _currentState = ConnectionState.disconnected();
@@ -98,12 +97,6 @@ class ConnectionProvider extends ChangeNotifier {
     _connectionSubscription = _udpReceiver.connectionStream.listen(
       _onConnectionStateChanged,
       onError: _onConnectionError,
-    );
-    
-    // Listen to EEG data
-    _dataSubscription = _udpReceiver.dataStream.listen(
-      _onEEGDataReceived,
-      onError: _onDataError,
     );
     
     // Listen to JSON EEG data
@@ -230,13 +223,6 @@ class ConnectionProvider extends ChangeNotifier {
     _updateConnectionState(ConnectionState.error(error.toString()));
   }
 
-  void _onEEGDataReceived(EEGSample sample) {
-    _binaryPacketsReceived++;
-    
-    // Forward EEG data to the data provider
-    _eegDataProvider.processSample(sample);
-  }
-
   void _onJsonEEGDataReceived(EEGJsonSample sample) {
     _jsonPacketsReceived++;
     
@@ -316,7 +302,6 @@ class ConnectionProvider extends ChangeNotifier {
   @override
   void dispose() {
     _connectionSubscription?.cancel();
-    _dataSubscription?.cancel();
     _jsonDataSubscription?.cancel();
     _udpReceiver.dispose();
     super.dispose();

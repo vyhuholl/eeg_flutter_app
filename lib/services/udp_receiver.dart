@@ -8,7 +8,6 @@ import '../models/connection_state.dart';
 /// UDP receiver service for EEG data with JSON support
 class UDPReceiver {
   RawDatagramSocket? _socket;
-  late StreamController<EEGSample> _dataController;
   late StreamController<EEGJsonSample> _jsonDataController;
   late StreamController<ConnectionState> _connectionController;
   late TimeDeltaProcessor _timeDeltaProcessor;
@@ -37,14 +36,10 @@ class UDPReceiver {
   ConnectionState _currentState = ConnectionState.disconnected();
 
   UDPReceiver() {
-    _dataController = StreamController<EEGSample>.broadcast();
     _jsonDataController = StreamController<EEGJsonSample>.broadcast();
     _connectionController = StreamController<ConnectionState>.broadcast();
     _timeDeltaProcessor = TimeDeltaProcessor();
   }
-
-  /// Stream of EEG data samples (legacy format)
-  Stream<EEGSample> get dataStream => _dataController.stream;
   
   /// Stream of EEG JSON data samples (new format)
   Stream<EEGJsonSample> get jsonDataStream => _jsonDataController.stream;
@@ -202,10 +197,6 @@ class UDPReceiver {
       // Emit JSON sample
       _jsonDataController.add(jsonSample);
       
-      // Also emit as legacy EEG sample for backward compatibility
-      final legacySample = jsonSample.toLegacyEEGSample();
-      _dataController.add(legacySample);
-      
     } catch (e) {
       _jsonParseErrors++;
       debugPrint('JSON parsing error: $e');
@@ -230,10 +221,6 @@ class UDPReceiver {
       );
       
       _jsonDataController.add(fallbackSample);
-      
-      // Also emit as legacy sample
-      final legacySample = fallbackSample.toLegacyEEGSample();
-      _dataController.add(legacySample);
       
     } catch (e) {
       debugPrint('Failed to create fallback sample: $e');
@@ -328,7 +315,6 @@ class UDPReceiver {
   Future<void> dispose() async {
     _timeDeltaProcessor.dispose();
     await stop();
-    await _dataController.close();
     await _jsonDataController.close();
     await _connectionController.close();
   }
