@@ -18,7 +18,7 @@ class _MainScreenState extends State<MainScreen> {
     return Consumer<ConnectionProvider>(
       builder: (context, connectionProvider, child) {
         if (connectionProvider.isConnected) {
-          return _buildEEGScreen(context);
+          return _buildEEGScreen(context, connectionProvider);
         } else {
           return _buildStartScreen(context, connectionProvider);
         }
@@ -84,16 +84,93 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
-  Widget _buildEEGScreen(BuildContext context) {
+  Widget _buildEEGScreen(BuildContext context, ConnectionProvider connectionProvider) {
     return Scaffold(
       backgroundColor: Colors.black,
       body: Consumer<EEGDataProvider>(
         builder: (context, eegProvider, child) {
-          return Padding(
-            padding: const EdgeInsets.all(8),
-            child: EEGChart(
-              showGridLines: true,
-              showAxes: true,
+          final isReceivingData = eegProvider.isReceivingJsonData;
+          
+          return SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Status indicator in top left corner
+                  _buildConnectionStatus(isReceivingData),
+                  
+                  const SizedBox(height: 20),
+                  
+                  // Centered meditation training button
+                  Center(
+                    child: Column(
+                      children: [
+                        ElevatedButton(
+                          onPressed: () => _startMeditationTraining(),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF0A84FF),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: const Text(
+                            'Пройти тренинг медитации',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                        
+                        const SizedBox(height: 12),
+                        
+                        // Instruction text
+                        const Text(
+                          'Подготовьте музыку для медитации, если она нужна.\nТренинг начнётся сразу',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 30),
+                  
+                  // EEG Chart (only show if receiving data)
+                  if (isReceivingData) ...[
+                    Center(
+                      child: Column(
+                        children: [
+                          // EEG Chart with fixed dimensions
+                          Container(
+                            width: 960,
+                            height: 440,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF2C2C2E),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: EEGChart(
+                              showGridLines: true,
+                              showAxes: true,
+                            ),
+                          ),
+                          
+                          const SizedBox(height: 12),
+                          
+                          // Legend
+                          _buildChartLegend(),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
+              ),
             ),
           );
         },
@@ -102,6 +179,82 @@ class _MainScreenState extends State<MainScreen> {
         onPressed: () => _disconnectFromDevice(),
         backgroundColor: Colors.red,
         child: const Icon(Icons.close, color: Colors.white),
+      ),
+    );
+  }
+
+  Widget _buildConnectionStatus(bool isReceivingData) {
+    return Row(
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(
+            color: isReceivingData ? Colors.green : Colors.red,
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          isReceivingData ? 'Электроды подключены' : 'Электроды не подключены',
+          style: TextStyle(
+            color: isReceivingData ? Colors.green : Colors.red,
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildChartLegend() {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Focus legend item
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 12,
+                height: 2,
+                color: const Color(0xFFBF5AF2), // Violet
+              ),
+              const SizedBox(width: 6),
+              const Text(
+                'Фокус',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+          
+          const SizedBox(width: 20),
+          
+          // Relaxation legend item
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 12,
+                height: 2,
+                color: const Color(0xFF32D74B), // Green
+              ),
+              const SizedBox(width: 6),
+              const Text(
+                'Расслабление',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -116,5 +269,15 @@ class _MainScreenState extends State<MainScreen> {
   void _disconnectFromDevice() {
     final connectionProvider = context.read<ConnectionProvider>();
     connectionProvider.disconnect();
+  }
+
+  void _startMeditationTraining() {
+    // TODO: Implement meditation training functionality
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Функция тренинга медитации будет добавлена позже'),
+        backgroundColor: Color(0xFF0A84FF),
+      ),
+    );
   }
 }

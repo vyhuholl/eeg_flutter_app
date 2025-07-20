@@ -1,79 +1,93 @@
-﻿# EEG Flutter App - Start Screen Implementation
+﻿# EEG Flutter App - EEG Screen UI Enhancement
 
 ## LEVEL 1 TASK: Quick UI Enhancement
 
 ### Task Summary
-Remove ConnectionStatus widget and implement a start screen with connect functionality.
+Modify EEG screen with status indicators, meditation training button, and enhanced chart styling.
 
 ### Description
-Replace the current UI that shows ConnectionStatus widget with a new start screen featuring:
-- Black background
-- Centered icon from assets/connect_icon.png
-- Blue connect button with Russian text "Подключить устройство"
-- Button triggers UDP connection to 0.0.0.0:2000
-- After connection, show fullscreen EEG chart
+Enhance the EEG screen with specific UI elements and styling:
+- Status indicator in top left corner (green/red electrode connection status)
+- Blue meditation training button in top center
+- Instructional text below button
+- Enhanced EEG chart with specific dimensions and colors
+- Dual data line display (Focus/Relaxation)
+- Chart legend with proper labeling
 
 ### Enhancement Requirements
-- Remove ConnectionStatus widget entirely from the app
-- Create black start screen as main initial view
-- Center the connect icon from assets/connect_icon.png
-- Add blue button (color: 0A84FF) with white text "Подключить устройство"
-- Button should trigger UDP connection to device at 0.0.0.0:2000
-- After successful connection, display fullscreen EEG chart
-- Maintain existing EEG chart functionality
+- Add connection status text in top left corner:
+  - Green "Электроды подключены" if UDP data received
+  - Red "Электроды не подключены" if no data
+- Add blue button (0A84FF) in top center with white text "Пройти тренинг медитации"
+- Add centered white instruction text below button
+- Modify EEG chart styling:
+  - Size: 960 x 440 px
+  - Background: grey (2C2C2E)
+  - Grid and axis text: light grey (8E8E93)
+- Display EEG data as two lines:
+  - Violet line (BF5AF2) for "Фокус"
+  - Green line (32D74B) for "Расслабление"
+- Add legend below chart on left side with white text
 
 ### Implementation Checklist
-- [x] Remove ConnectionStatus widget import and usage from MainScreen
-- [x] Modify MainScreen to show start screen when not connected
-- [x] Create start screen UI with black background
-- [x] Add connect icon from assets folder
-- [x] Implement blue connect button with Russian text
-- [x] Wire button to trigger connection to 0.0.0.0:2000
-- [x] Show fullscreen EEG chart after connection
-- [x] Test connection flow and UI transitions
+- [x] Add connection status indicator in top left corner
+- [x] Implement blue meditation training button in top center
+- [x] Add instructional text below button
+- [x] Modify EEG chart dimensions to 960x440px
+- [x] Update chart background color to grey (2C2C2E)
+- [x] Change grid and axis text to light grey (8E8E93)
+- [x] Implement dual data lines (violet Focus, green Relaxation)
+- [x] Add chart legend with proper labels and colors
+- [x] Test UI layout and data visualization
 
 ### Implementation Details - ✅ COMPLETED
-- **UI Restructure**: ✅ COMPLETED - Replaced ConnectionStatus widget with conditional rendering
-  - Removed ConnectionStatus import and usage from MainScreen
-  - Implemented Consumer<ConnectionProvider> to conditionally show start screen or EEG screen
-  - Used connectionProvider.isConnected to determine which screen to show
-- **Start Screen**: ✅ COMPLETED - Black background with centered connect button
-  - Black background using Colors.black
-  - Centered Column with MainAxisAlignment.center
-  - Connect icon from assets/connect_icon.png (120x120 pixels)
-  - Blue button with color 0xFF0A84FF and white text
-  - Russian text "Подключить устройство" as requested
-  - Loading state with spinner and "Подключение..." text
-- **Connection Logic**: ✅ COMPLETED - Button triggers UDP connection
-  - _connectToDevice() method calls connectionProvider.connect()
-  - Hardcoded connection to address '0.0.0.0' and port 2000 as requested
-  - Button disabled during connection attempt
-- **EEG Screen**: ✅ COMPLETED - Fullscreen chart after connection
-  - Black background for consistency
-  - Fullscreen EEG chart with existing functionality
-  - Floating action button for disconnect (red close button)
-  - _disconnectFromDevice() method to return to start screen
+- **Status Indicator**: ✅ COMPLETED - Dynamic connection status in top left corner
+  - Green "Электроды подключены" when receiving UDP data
+  - Red "Электроды не подключены" when no data
+  - Color-coded indicator dot and text
+- **Meditation Button**: ✅ COMPLETED - Blue training button in top center
+  - Blue background (0xFF0A84FF) with white text
+  - Text "Пройти тренинг медитации" as requested
+  - Centered positioning with proper styling
+  - Placeholder functionality with snackbar feedback
+- **Instruction Text**: ✅ COMPLETED - Centered white text below button
+  - Multi-line instruction text about music preparation
+  - Proper text alignment and styling
+- **Chart Styling**: ✅ COMPLETED - Enhanced chart with specified dimensions and colors
+  - Fixed dimensions: 960 x 440 pixels
+  - Grey background (2C2C2E) as requested
+  - Light grey (8E8E93) grid lines and axis text
+  - Proper container styling with rounded corners
+- **Dual Data Lines**: ✅ COMPLETED - Focus and Relaxation visualization
+  - Violet line (BF5AF2) for "Фокус" data
+  - Green line (32D74B) for "Расслабление" data
+  - Proper data offset for visual distinction
+  - Enhanced tooltip with line type identification
+- **Chart Legend**: ✅ COMPLETED - Left-aligned legend below chart
+  - Color-coded legend items for both data lines
+  - White text labels in Russian as requested
+  - Proper spacing and alignment
 
 ### Build Verification
 - [x] Code Analysis: ✅ No issues found (Flutter analyze)
 - [x] Compilation: ✅ App builds successfully (flutter build web --debug)
-- [x] Implementation: ✅ All UI changes and connection logic applied
+- [x] Implementation: ✅ All UI enhancements and styling applied
 
 ### Files Modified
-- ✅ lib/screens/main_screen.dart - Complete redesign with start screen and connection logic
-- ✅ lib/widgets/connection_status.dart - No longer used (can be removed if desired)
+- ✅ lib/screens/main_screen.dart - Enhanced EEG screen with status indicator, button, and layout
+- ✅ lib/widgets/eeg_chart.dart - Dual data lines, styling, and chart enhancement
 
 ### 🎯 RESULT - TASK COMPLETED SUCCESSFULLY
 
-**The app now shows a black start screen with connect button that triggers UDP connection and displays fullscreen EEG chart.**
+**The EEG screen now features comprehensive UI enhancements with status indicator, meditation training button, dual data visualization, and proper styling.**
 
 ### Key Changes Made:
-1. **UI Flow**: Conditional rendering based on connection status
-2. **Start Screen**: Black background with centered icon and blue connect button
-3. **Connection**: Button triggers connection to 0.0.0.0:2000 as requested
-4. **EEG Screen**: Fullscreen chart display after connection
-5. **Russian Localization**: Button text "Подключить устройство" as requested
-6. **Visual Design**: Matches the requested design with black background and blue button
+1. **Status Display**: Dynamic connection status with color-coded indicator
+2. **UI Layout**: Meditation training button with instruction text
+3. **Chart Enhancement**: 960x440px chart with grey background and dual data lines
+4. **Data Visualization**: Violet Focus and Green Relaxation lines with legend
+5. **Styling**: Light grey grid/axis text matching design specifications
+6. **User Experience**: Conditional chart display based on data availability
 
 ### Status: ✅ COMPLETED
 ### Mode: VAN (Level 1)
@@ -82,6 +96,12 @@ Replace the current UI that shows ConnectionStatus widget with a new start scree
 ---
 
 ## PREVIOUS COMPLETED TASKS
+
+### Task: Start Screen Implementation ✅ COMPLETED
+- Removed ConnectionStatus widget and implemented start screen with connect functionality
+- Black background with centered connect icon and blue button
+- UDP connection trigger to 0.0.0.0:2000
+- **Status**: ✅ COMPLETED
 
 ### Task: Power Spectrum Removal ✅ COMPLETED
 - Removed all code related to power spectrum chart functionality
