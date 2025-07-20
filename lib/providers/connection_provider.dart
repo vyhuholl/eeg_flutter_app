@@ -269,12 +269,10 @@ class ConnectionProvider extends ChangeNotifier {
     // Forward JSON EEG data to the data provider
     _eegDataProvider.processJsonSample(sample);
     
-    // Check if spectrum data is available
-    if (sample.hasSpectrumData) {
-      _spectrumPacketsReceived++;
-      _spectrumDataAvailable = true;
-      _lastSpectrumUpdate = DateTime.now();
-    }
+    // Track data reception
+    _spectrumPacketsReceived++;
+    _spectrumDataAvailable = true;
+    _lastSpectrumUpdate = DateTime.now();
   }
 
   void _onDataError(error) {

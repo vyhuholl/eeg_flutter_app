@@ -1,20 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/eeg_data_provider.dart';
-import '../providers/connection_provider.dart';
 import '../widgets/eeg_chart.dart';
-import '../widgets/power_spectrum_chart.dart';
 import '../widgets/connection_status.dart';
 
-/// Chart layout modes
-enum ChartLayoutMode {
-  eegOnly,
-  spectrumOnly,
-  dual,
-  adaptive,
-}
-
-/// Main screen of the EEG Flutter app with dual chart layout
+/// Main screen of the EEG Flutter app with single EEG chart
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
 
@@ -22,35 +12,8 @@ class MainScreen extends StatefulWidget {
   State<MainScreen> createState() => _MainScreenState();
 }
 
-class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
-  final ChartLayoutMode _layoutMode = ChartLayoutMode.adaptive; // Always auto
-  double _chartRatio = 0.6; // EEG chart takes 60% of space by default
+class _MainScreenState extends State<MainScreen> {
   bool _isFullscreen = false;
-  
-  late AnimationController _spectrumAnimationController;
-  late Animation<double> _spectrumAnimation;
-  
-  @override
-  void initState() {
-    super.initState();
-    
-    // Initialize animation controller for spectrum chart transitions
-    _spectrumAnimationController = AnimationController(
-      duration: const Duration(milliseconds: 300),
-      vsync: this,
-    );
-    
-    _spectrumAnimation = CurvedAnimation(
-      parent: _spectrumAnimationController,
-      curve: Curves.easeInOut,
-    );
-  }
-
-  @override
-  void dispose() {
-    _spectrumAnimationController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -61,13 +24,11 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
           if (!_isFullscreen) ...[
             // Connection Status Panel
             const ConnectionStatus(),
-            
-
           ],
           
-          // Dual Chart Layout
+          // EEG Chart
           Expanded(
-            child: _buildDualChartLayout(),
+            child: _buildEEGChart(),
           ),
           
           // Bottom Controls (minimized in fullscreen)
@@ -83,31 +44,6 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
       title: const Text('EEG Monitor'),
       elevation: 2,
       actions: [
-        
-        // Spectrum Data Indicator
-        Consumer<EEGDataProvider>(
-          builder: (context, eegProvider, child) {
-            return Container(
-              margin: const EdgeInsets.only(right: 8),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.bar_chart,
-                    size: 16,
-                    color: eegProvider.spectrumDataStatusColor,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    eegProvider.hasSpectrumData ? 'SPEC' : 'NO SPEC',
-                    style: const TextStyle(fontSize: 10),
-                  ),
-                ],
-              ),
-            );
-          },
-        ),
-        
         // Live Data Indicator
         Consumer<EEGDataProvider>(
           builder: (context, eegProvider, child) {
@@ -165,106 +101,32 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildDualChartLayout() {
-    return Consumer2<EEGDataProvider, ConnectionProvider>(
-      builder: (context, eegProvider, connectionProvider, child) {
+  Widget _buildEEGChart() {
+    return Consumer<EEGDataProvider>(
+      builder: (context, eegProvider, child) {
         final hasEegData = eegProvider.isReceivingJsonData;
-        final hasSpectrumData = eegProvider.hasSpectrumData && eegProvider.isSpectrumDataFresh;
         
-        // Determine layout based on mode and data availability
-        final shouldShowSpectrum = _shouldShowSpectrum(hasEegData, hasSpectrumData);
-        
-        if (shouldShowSpectrum && _layoutMode != ChartLayoutMode.eegOnly) {
-          return _buildDualChartView(eegProvider, hasEegData, hasSpectrumData);
-        } else {
-          return _buildSingleChartView(eegProvider, hasEegData);
-        }
+        return Card(
+          margin: const EdgeInsets.all(8),
+          child: Column(
+            children: [
+              // Chart Header
+              _buildChartHeader('EEG Time Series', hasEegData),
+              
+              // EEG Chart
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: EEGChart(
+                    showGridLines: true,
+                    showAxes: true,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
       },
-    );
-  }
-
-  Widget _buildSingleChartView(EEGDataProvider eegProvider, bool hasEegData) {
-    return Card(
-      margin: const EdgeInsets.all(8),
-      child: Column(
-        children: [
-          // Chart Header
-          _buildChartHeader('EEG Time Series', hasEegData),
-          
-          // EEG Chart
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: EEGChart(
-                showGridLines: true,
-                showAxes: true,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDualChartView(EEGDataProvider eegProvider, bool hasEegData, bool hasSpectrumData) {
-    return Column(
-      children: [
-        // EEG Chart (Primary)
-        Expanded(
-          flex: (_chartRatio * 100).round(),
-          child: Card(
-            margin: const EdgeInsets.fromLTRB(8, 8, 8, 4),
-            child: Column(
-              children: [
-                _buildChartHeader('EEG Time Series', hasEegData),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: EEGChart(
-                      showGridLines: true,
-                      showAxes: true,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        
-        // Draggable Divider
-        _buildDraggableDivider(),
-        
-        // Spectrum Chart (Secondary)
-        AnimatedBuilder(
-          animation: _spectrumAnimation,
-          builder: (context, child) {
-            return SizeTransition(
-              sizeFactor: _spectrumAnimation,
-              child: Expanded(
-                flex: ((1 - _chartRatio) * 100).round(),
-                child: Card(
-                  margin: const EdgeInsets.fromLTRB(8, 4, 8, 8),
-                  child: Column(
-                    children: [
-                      _buildChartHeader('Power Spectrum', hasSpectrumData),
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                                                     child: PowerSpectrumChart(
-                             showGrid: true,
-                             showAxisLabels: !_isFullscreen,
-                             showInteractiveFeatures: true,
-                           ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
-        ),
-      ],
     );
   }
 
@@ -302,43 +164,6 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
       ),
     );
   }
-
-  Widget _buildDraggableDivider() {
-    return GestureDetector(
-      onPanUpdate: (details) {
-        setState(() {
-          final RenderBox box = context.findRenderObject() as RenderBox;
-          final localPosition = box.globalToLocal(details.globalPosition);
-          final height = box.size.height - 200; // Account for other widgets
-          
-          double newRatio = localPosition.dy / height;
-          newRatio = newRatio.clamp(0.3, 0.8); // Limit ratio between 30% and 80%
-          
-          _chartRatio = newRatio;
-        });
-      },
-      child: Container(
-        height: 20,
-        margin: const EdgeInsets.symmetric(horizontal: 8),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Center(
-          child: Container(
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-
 
   Widget _buildBottomControls() {
     return Container(
@@ -409,19 +234,6 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
     return eegProvider.isReceivingJsonData ? 'Live' : 'No Data';
   }
 
-  bool _shouldShowSpectrum(bool hasEegData, bool hasSpectrumData) {
-    switch (_layoutMode) {
-      case ChartLayoutMode.eegOnly:
-        return false;
-      case ChartLayoutMode.spectrumOnly:
-        return hasSpectrumData;
-      case ChartLayoutMode.dual:
-        return true;
-      case ChartLayoutMode.adaptive:
-        return hasSpectrumData && hasEegData;
-    }
-  }
-
   void _handleMenuAction(String action) {
     switch (action) {
       case 'fullscreen':
@@ -450,5 +262,4 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
       ),
     );
   }
-
 }

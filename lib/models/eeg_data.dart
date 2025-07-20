@@ -66,14 +66,12 @@ class EEGSample {
 class EEGJsonSample {
   final double timeDelta;
   final double eegValue;
-  final Map<int, double>? powerSpectrum;
   final DateTime absoluteTimestamp;
   final int sequenceNumber;
 
   const EEGJsonSample({
     required this.timeDelta,
     required this.eegValue,
-    this.powerSpectrum,
     required this.absoluteTimestamp,
     required this.sequenceNumber,
   });
@@ -103,31 +101,12 @@ class EEGJsonSample {
       throw EEGJsonParseException('Invalid time delta: $timeDelta ms (must be > 0 and <= 5000)');
     }
 
-    // Parse optional power spectrum data (1-49 Hz)
-    Map<int, double>? powerSpectrum;
-    final spectrumData = <int, double>{};
-    
-    for (int freq = 1; freq <= 49; freq++) {
-      final key = '${freq}Hz';  // Changed from freq.toString() to '${freq}Hz'
-      if (json.containsKey(key)) {
-        double power = _parseDouble(json[key]);
-        if (power >= 0 && power <= 100) {
-          spectrumData[freq] = power;
-        }
-      }
-    }
-
-    if (spectrumData.isNotEmpty) {
-      powerSpectrum = spectrumData;
-    }
-
     // Process time delta to absolute timestamp
     final absoluteTimestamp = processor.processDelta(timeDelta);
 
     return EEGJsonSample(
       timeDelta: timeDelta,
       eegValue: eegValue,
-      powerSpectrum: powerSpectrum,
       absoluteTimestamp: absoluteTimestamp,
       sequenceNumber: sequenceNumber,
     );
@@ -146,14 +125,7 @@ class EEGJsonSample {
     }
   }
 
-  /// Check if spectrum data is available
-  bool get hasSpectrumData => powerSpectrum != null && powerSpectrum!.isNotEmpty;
 
-  /// Get power spectrum data as PowerSpectrumData
-  PowerSpectrumData? get spectrumData {
-    if (!hasSpectrumData) return null;
-    return PowerSpectrumData(powerSpectrum!);
-  }
 
   /// Convert to legacy EEGSample format for backward compatibility
   EEGSample toLegacyEEGSample() {
@@ -166,115 +138,21 @@ class EEGJsonSample {
   }
 
   Map<String, dynamic> toJson() {
-    final json = <String, dynamic>{
+    return <String, dynamic>{
       'd': timeDelta,
       'E': eegValue,
       'absoluteTimestamp': absoluteTimestamp.millisecondsSinceEpoch,
       'sequenceNumber': sequenceNumber,
     };
-
-    // Add power spectrum data if available
-    if (hasSpectrumData) {
-      for (final entry in powerSpectrum!.entries) {
-        json[entry.key.toString()] = entry.value;
-      }
-    }
-
-    return json;
   }
 
   @override
   String toString() {
-    return 'EEGJsonSample(timeDelta: ${timeDelta}ms, eegValue: $eegValue, spectrum: ${hasSpectrumData ? '${powerSpectrum!.length} frequencies' : 'none'}, seq: $sequenceNumber)';
+    return 'EEGJsonSample(timeDelta: ${timeDelta}ms, eegValue: $eegValue, seq: $sequenceNumber)';
   }
 }
 
-/// Power spectrum data for frequency analysis
-class PowerSpectrumData {
-  final Map<int, double> _frequencies;
 
-  PowerSpectrumData(this._frequencies);
-
-  /// Get power at specific frequency
-  double? getPowerAt(int frequency) {
-    return _frequencies[frequency];
-  }
-
-  /// Get all frequencies with power data
-  List<int> get frequencies => _frequencies.keys.toList()..sort();
-
-  /// Get all power values in frequency order
-  List<double> get powers => frequencies.map((f) => _frequencies[f]!).toList();
-
-  /// Get frequency range
-  int get minFrequency => frequencies.isEmpty ? 0 : frequencies.first;
-  int get maxFrequency => frequencies.isEmpty ? 0 : frequencies.last;
-
-  /// Get frequency count
-  int get frequencyCount => _frequencies.length;
-
-  /// Get power by frequency bands
-  Map<FrequencyBand, double> get powerByBands {
-    final result = <FrequencyBand, double>{};
-    
-    for (final band in FrequencyBand.values) {
-      double totalPower = 0;
-      int count = 0;
-      
-      for (final freq in frequencies) {
-        if (freq >= band.minFreq && freq <= band.maxFreq) {
-          totalPower += _frequencies[freq]!;
-          count++;
-        }
-      }
-      
-      result[band] = count > 0 ? totalPower / count : 0;
-    }
-    
-    return result;
-  }
-
-  /// Get peak frequency (frequency with highest power)
-  int? get peakFrequency {
-    if (_frequencies.isEmpty) return null;
-    
-    double maxPower = 0;
-    int? peakFreq;
-    
-    for (final entry in _frequencies.entries) {
-      if (entry.value > maxPower) {
-        maxPower = entry.value;
-        peakFreq = entry.key;
-      }
-    }
-    
-    return peakFreq;
-  }
-
-  /// Get total power across all frequencies
-  double get totalPower => _frequencies.values.fold(0.0, (sum, power) => sum + power);
-
-  @override
-  String toString() {
-    return 'PowerSpectrumData(frequencies: ${frequencies.join(', ')}, peak: ${peakFrequency}Hz)';
-  }
-}
-
-/// EEG frequency bands for clinical interpretation
-enum FrequencyBand {
-  delta(1, 4, 'Delta', 'Deep sleep, meditation'),
-  theta(4, 8, 'Theta', 'Light sleep, creativity'),
-  alpha(8, 13, 'Alpha', 'Relaxed awareness'),
-  beta(13, 30, 'Beta', 'Active thinking'),
-  gamma(30, 49, 'Gamma', 'High-level cognitive processing');
-
-  const FrequencyBand(this.minFreq, this.maxFreq, this.name, this.description);
-
-  final int minFreq;
-  final int maxFreq;
-  final String name;
-  final String description;
-}
 
 /// Time delta processor with weighted moving average drift correction
 class TimeDeltaProcessor {
@@ -535,16 +413,7 @@ class EEGJsonBuffer {
     return getLatest(_count);
   }
 
-  /// Get samples with spectrum data
-  List<EEGJsonSample> getSpectrumSamples([int count = 100]) {
-    return getLatest(count).where((sample) => sample.hasSpectrumData).toList();
-  }
 
-  /// Get latest spectrum data
-  PowerSpectrumData? getLatestSpectrumData() {
-    final spectrumSamples = getSpectrumSamples(10);
-    return spectrumSamples.isNotEmpty ? spectrumSamples.last.spectrumData : null;
-  }
 
   int get length => _count;
   bool get isEmpty => _count == 0;
