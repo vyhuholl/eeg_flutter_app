@@ -14,7 +14,6 @@ class EEGDataProcessor {
   // Chart data for visualization
   final Map<int, List<FlSpot>> _chartData = {};
   final List<FlSpot> _eegTimeSeriesData = [];
-  final int _maxChartPoints = 1000; // Maximum points to display
   final int _timeWindowSeconds = 120; // Show last 120 seconds of data
   
   EEGDataProcessor({required EEGConfig config}) 
@@ -44,11 +43,6 @@ class EEGDataProcessor {
     // Remove data older than the time window (120 seconds)
     final cutoffTime = DateTime.now().millisecondsSinceEpoch - (_timeWindowSeconds * 1000);
     _eegTimeSeriesData.removeWhere((spot) => spot.x < cutoffTime);
-    
-    // Also maintain maximum points as a safety limit
-    if (_eegTimeSeriesData.length > _maxChartPoints) {
-      _eegTimeSeriesData.removeAt(0);
-    }
   }
 
   /// Get chart data for specific channel
