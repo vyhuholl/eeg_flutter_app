@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/eeg_data_provider.dart';
 import '../providers/connection_provider.dart';
 import '../widgets/eeg_chart.dart';
+import 'meditation_screen.dart';
 
 /// Main screen of the EEG Flutter app with start screen and EEG chart
 class MainScreen extends StatefulWidget {
@@ -272,11 +273,10 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   void _startMeditationTraining() {
-    // TODO: Implement meditation training functionality
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Функция тренинга медитации будет добавлена позже'),
-        backgroundColor: Color(0xFF0A84FF),
+    // Navigate to meditation screen
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const MeditationScreen(),
       ),
     );
   }

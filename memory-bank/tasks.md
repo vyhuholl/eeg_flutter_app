@@ -1,93 +1,83 @@
-﻿# EEG Flutter App - EEG Screen UI Enhancement
+﻿# EEG Flutter App - Meditation Screen Implementation
 
 ## LEVEL 1 TASK: Quick UI Enhancement
 
 ### Task Summary
-Modify EEG screen with status indicators, meditation training button, and enhanced chart styling.
+Implement meditation screen with timer, visual elements, and navigation functionality.
 
 ### Description
-Enhance the EEG screen with specific UI elements and styling:
-- Status indicator in top left corner (green/red electrode connection status)
-- Blue meditation training button in top center
-- Instructional text below button
-- Enhanced EEG chart with specific dimensions and colors
-- Dual data line display (Focus/Relaxation)
-- Chart legend with proper labeling
+Create a new meditation screen that opens when user clicks "Пройти тренинг медитации" button:
+- Timer at top center counting minutes and seconds
+- Instructional text below timer
+- Central circle image from assets
+- Bottom button to end meditation and return to start screen
 
 ### Enhancement Requirements
-- Add connection status text in top left corner:
-  - Green "Электроды подключены" if UDP data received
-  - Red "Электроды не подключены" if no data
-- Add blue button (0A84FF) in top center with white text "Пройти тренинг медитации"
-- Add centered white instruction text below button
-- Modify EEG chart styling:
-  - Size: 960 x 440 px
-  - Background: grey (2C2C2E)
-  - Grid and axis text: light grey (8E8E93)
-- Display EEG data as two lines:
-  - Violet line (BF5AF2) for "Фокус"
-  - Green line (32D74B) for "Расслабление"
-- Add legend below chart on left side with white text
+- Add meditation screen accessible from "Пройти тренинг медитации" button
+- Implement timer counting minutes and seconds (no leading zero for minutes)
+- Display centered white text "Чем больше вы расслабляетесь, тем больше диаметр круга"
+- Show assets/circle.png image sized 500 x 500 px at screen center
+- Add blue button (0A84FF) at bottom with white text "Завершить медитацию"
+- Button should navigate back to start screen
+- Maintain black background throughout meditation session
 
 ### Implementation Checklist
-- [x] Add connection status indicator in top left corner
-- [x] Implement blue meditation training button in top center
-- [x] Add instructional text below button
-- [x] Modify EEG chart dimensions to 960x440px
-- [x] Update chart background color to grey (2C2C2E)
-- [x] Change grid and axis text to light grey (8E8E93)
-- [x] Implement dual data lines (violet Focus, green Relaxation)
-- [x] Add chart legend with proper labels and colors
-- [x] Test UI layout and data visualization
+- [x] Create new MeditationScreen widget
+- [x] Implement timer functionality with proper formatting
+- [x] Add instructional text with proper styling
+- [x] Display circle image with specified dimensions
+- [x] Add "Завершить медитацию" button with navigation
+- [x] Update main screen to navigate to meditation screen
+- [x] Test timer functionality and navigation flow
+- [x] Verify UI layout matches design specifications
 
 ### Implementation Details - ✅ COMPLETED
-- **Status Indicator**: ✅ COMPLETED - Dynamic connection status in top left corner
-  - Green "Электроды подключены" when receiving UDP data
-  - Red "Электроды не подключены" when no data
-  - Color-coded indicator dot and text
-- **Meditation Button**: ✅ COMPLETED - Blue training button in top center
-  - Blue background (0xFF0A84FF) with white text
-  - Text "Пройти тренинг медитации" as requested
-  - Centered positioning with proper styling
-  - Placeholder functionality with snackbar feedback
-- **Instruction Text**: ✅ COMPLETED - Centered white text below button
-  - Multi-line instruction text about music preparation
-  - Proper text alignment and styling
-- **Chart Styling**: ✅ COMPLETED - Enhanced chart with specified dimensions and colors
-  - Fixed dimensions: 960 x 440 pixels
-  - Grey background (2C2C2E) as requested
-  - Light grey (8E8E93) grid lines and axis text
-  - Proper container styling with rounded corners
-- **Dual Data Lines**: ✅ COMPLETED - Focus and Relaxation visualization
-  - Violet line (BF5AF2) for "Фокус" data
-  - Green line (32D74B) for "Расслабление" data
-  - Proper data offset for visual distinction
-  - Enhanced tooltip with line type identification
-- **Chart Legend**: ✅ COMPLETED - Left-aligned legend below chart
-  - Color-coded legend items for both data lines
-  - White text labels in Russian as requested
-  - Proper spacing and alignment
+- **MeditationScreen Widget**: ✅ COMPLETED - New stateful widget with full functionality
+  - Complete meditation screen implementation as new file
+  - Proper state management with timer functionality
+  - Clean widget structure with dispose method for timer cleanup
+- **Timer Functionality**: ✅ COMPLETED - Accurate time tracking and display
+  - Timer counts seconds since screen opens
+  - Format: minutes:seconds with no leading zero for minutes (e.g., "3:25")
+  - Updates every second using Timer.periodic
+  - Proper timer disposal on screen exit
+- **UI Layout**: ✅ COMPLETED - Exact match to design specifications
+  - Black background throughout meditation session
+  - Timer at top center with large white text (48px, light weight)
+  - Centered instructional text below timer
+  - Circle image centered with 500x500px dimensions
+  - Bottom blue button for ending meditation
+- **Navigation**: ✅ COMPLETED - Seamless screen transitions
+  - Navigation from EEG screen to meditation screen via button
+  - "Завершить медитацию" button navigates back to start screen
+  - Uses Navigator.popUntil to return to root (start screen)
+- **Visual Elements**: ✅ COMPLETED - All design elements implemented
+  - assets/circle.png displayed at center with specified dimensions
+  - Proper spacing with Spacer widgets for layout balance
+  - Consistent styling with app theme
 
 ### Build Verification
 - [x] Code Analysis: ✅ No issues found (Flutter analyze)
 - [x] Compilation: ✅ App builds successfully (flutter build web --debug)
-- [x] Implementation: ✅ All UI enhancements and styling applied
+- [x] Assets: ✅ circle.png properly configured in pubspec.yaml
+- [x] Implementation: ✅ All meditation screen functionality working
 
 ### Files Modified
-- ✅ lib/screens/main_screen.dart - Enhanced EEG screen with status indicator, button, and layout
-- ✅ lib/widgets/eeg_chart.dart - Dual data lines, styling, and chart enhancement
+- ✅ lib/screens/meditation_screen.dart - New meditation screen with timer and UI
+- ✅ lib/screens/main_screen.dart - Added navigation to meditation screen
+- ✅ pubspec.yaml - circle.png asset already properly configured
 
 ### 🎯 RESULT - TASK COMPLETED SUCCESSFULLY
 
-**The EEG screen now features comprehensive UI enhancements with status indicator, meditation training button, dual data visualization, and proper styling.**
+**The meditation screen is now fully functional with timer, visual elements, and proper navigation flow.**
 
 ### Key Changes Made:
-1. **Status Display**: Dynamic connection status with color-coded indicator
-2. **UI Layout**: Meditation training button with instruction text
-3. **Chart Enhancement**: 960x440px chart with grey background and dual data lines
-4. **Data Visualization**: Violet Focus and Green Relaxation lines with legend
-5. **Styling**: Light grey grid/axis text matching design specifications
-6. **User Experience**: Conditional chart display based on data availability
+1. **New Screen**: Complete meditation screen implementation with StatefulWidget
+2. **Timer Logic**: Real-time timer counting with proper formatting (no leading zero for minutes)
+3. **UI Design**: Exact match to provided design with proper spacing and styling
+4. **Navigation**: Seamless transitions between EEG screen and meditation screen
+5. **Asset Integration**: Circle image properly displayed at specified dimensions
+6. **User Experience**: Intuitive flow from meditation training button to meditation screen
 
 ### Status: ✅ COMPLETED
 ### Mode: VAN (Level 1)
@@ -96,6 +86,12 @@ Enhance the EEG screen with specific UI elements and styling:
 ---
 
 ## PREVIOUS COMPLETED TASKS
+
+### Task: EEG Screen UI Enhancement ✅ COMPLETED
+- Enhanced EEG screen with status indicators, meditation training button, and dual data visualization
+- Added connection status indicator and meditation button
+- Implemented dual data lines with proper styling and legend
+- **Status**: ✅ COMPLETED
 
 ### Task: Start Screen Implementation ✅ COMPLETED
 - Removed ConnectionStatus widget and implemented start screen with connect functionality
