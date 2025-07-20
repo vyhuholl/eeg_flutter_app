@@ -173,13 +173,11 @@ class EEGChart extends StatelessWidget {
           interval: 10000, // 10 seconds (10000ms)
           getTitlesWidget: (value, meta) {
             final date = DateTime.fromMillisecondsSinceEpoch(value.toInt());
-            final now = DateTime.now();
-            final diff = now.difference(date).inSeconds;
             
             // Show relative time in seconds ago
-            if (diff <= 120) {
+            if (date.second <= 120) {
               return Text(
-                '${diff}s',
+                '${date.second}s',
                 style: const TextStyle(
                   fontSize: 10,
                   color: Color(0xFF8E8E93), // Light grey
@@ -188,7 +186,7 @@ class EEGChart extends StatelessWidget {
             } else {
               // For times older than 120 seconds, show absolute seconds
               return Text(
-                '${date.second}s',
+                '${date.second - 120}s',
                 style: const TextStyle(
                   fontSize: 10,
                   color: Color(0xFF8E8E93), // Light grey
