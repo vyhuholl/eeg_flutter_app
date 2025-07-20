@@ -1,18 +1,18 @@
 ﻿# Active Context - EEG Flutter App
 
 ## Current Work Focus
-**VAN MODE LEVEL 1** - EEG Chart Time Window Enhancement ✅ COMPLETED
+**VAN MODE LEVEL 1** - Start Screen Implementation ✅ COMPLETED
 
 ## Project Status: LEVEL 1 TASK COMPLETED
 - Flutter project with complete EEG UDP networking implementation
 - Real-time data processing and visualization system
 - Provider-based state management with multi-channel support
 - Full architecture matching documented system patterns
-- **COMPLETED**: Chart enhancement for 120-second time window with 10-second intervals
+- **COMPLETED**: Start screen with connect button functionality
 
-## Current Task: EEG Chart Time Window Enhancement ✅ COMPLETED
+## Current Task: Start Screen Implementation ✅ COMPLETED
 **VAN MODE LEVEL 1:**
-- Task Type: Quick Enhancement
+- Task Type: Quick UI Enhancement
 - Complexity: Level 1
 - Mode: VAN (no need for PLAN/CREATIVE modes)
 - Status: ✅ COMPLETED SUCCESSFULLY
@@ -20,31 +20,40 @@
 ## Task Results ✅
 
 ### ✅ Primary Objective COMPLETED
-Modified EEG chart to show data for the last 120 seconds instead of current time window
+Removed ConnectionStatus widget and implemented start screen with connect functionality
 
-### ✅ Secondary Objective COMPLETED
-Updated time axis to show markings every 10 seconds for better readability
+### ✅ Secondary Objectives COMPLETED
+- Black background start screen with centered connect icon
+- Blue connect button with Russian text "Подключить устройство"
+- UDP connection to 0.0.0.0:2000 triggered by button
+- Fullscreen EEG chart display after connection
 
 ### ✅ Technical Implementation COMPLETED
 
-1. **Chart Configuration** ✅
-   - Modified time window from 500ms to 10,000ms intervals
-   - Updated time axis interval markings to 10-second increments
-   - Enhanced time labels to show relative seconds
+1. **UI Restructure** ✅
+   - Removed ConnectionStatus widget import and usage
+   - Implemented conditional rendering based on connection status
+   - Used Consumer<ConnectionProvider> for state management
 
-2. **Data Management** ✅
-   - Implemented time-based data filtering for 120-second window
-   - Enhanced data provider with time-based cleanup
-   - Maintained data collection and processing efficiency
+2. **Start Screen Design** ✅
+   - Black background using Colors.black
+   - Centered layout with Column and MainAxisAlignment.center
+   - Connect icon from assets/connect_icon.png (120x120 pixels)
+   - Blue button (color: 0xFF0A84FF) with white text
+   - Loading state with spinner and "Подключение..." text
 
-3. **Performance Verification** ✅
-   - Chart renders smoothly with time-based filtering
-   - Build test successful with no compilation errors
-   - Memory optimization through time-based data cleanup
+3. **Connection Logic** ✅
+   - Button triggers connectionProvider.connect() with hardcoded address '0.0.0.0' and port 2000
+   - Button disabled during connection attempt
+   - Proper error handling and state management
+
+4. **EEG Screen Enhancement** ✅
+   - Fullscreen EEG chart with black background
+   - Floating action button for disconnect (red close button)
+   - Maintains all existing EEG chart functionality
 
 ## Files Modified ✅
-- ✅ lib/widgets/eeg_chart.dart - Chart time axis and intervals
-- ✅ lib/services/data_processor.dart - Time-based data filtering
+- ✅ lib/screens/main_screen.dart - Complete redesign with conditional rendering
 
 ## Quality Assurance ✅
 - ✅ **Code Analysis**: No issues (flutter analyze)
@@ -54,19 +63,21 @@ Updated time axis to show markings every 10 seconds for better readability
 ## System Status
 - **Architecture**: Established and working ✅
 - **Technology Stack**: Flutter/Dart, Provider state management, fl_chart ✅
-- **Data Processing**: Enhanced with 120-second time window ✅
+- **Data Processing**: Working with 120-second time window ✅
 - **Visualization**: Enhanced with 10-second intervals ✅
-- **Performance**: Optimized with time-based data management ✅
+- **UI/UX**: New start screen with connect functionality ✅
+- **Performance**: Optimized with conditional rendering ✅
 
 ## 🎯 TASK COMPLETION SUMMARY
 
-**The EEG chart now successfully displays the last 120 seconds of data with clear 10-second interval markings, providing improved long-term trend visualization for EEG monitoring.**
+**The app now features a black start screen with connect icon and blue button that triggers UDP connection to 0.0.0.0:2000, then displays fullscreen EEG chart.**
 
 ### Key Achievements:
-1. **Time Window**: Extended from ~1000 points to exactly 120 seconds
-2. **Intervals**: Changed from 0.5-second to 10-second markings
-3. **Performance**: Optimized data management with time-based filtering
-4. **User Experience**: Enhanced readability with relative time labels
+1. **Start Screen**: Black background with centered connect icon
+2. **Connect Button**: Blue button (0A84FF) with Russian text "Подключить устройство"
+3. **Connection Flow**: Button triggers UDP connection to specified address and port
+4. **EEG Display**: Fullscreen chart after successful connection
+5. **User Experience**: Smooth transition between start screen and EEG view
 
 ## Current State
 - **Mode**: VAN Level 1 ✅ COMPLETED
