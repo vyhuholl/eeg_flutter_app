@@ -138,10 +138,10 @@ class EEGChart extends StatelessWidget {
     return lines;
   }
 
-  /// Calculate 15-second moving average for focus values
+  /// Calculate 10-second moving average for focus values
   List<FlSpot> _calculateFocusMovingAverage(List<EEGJsonSample> samples) {
     final focusData = <FlSpot>[];
-    const movingAverageWindowMs = 15 * 1000; // 15 seconds in milliseconds
+    const movingAverageWindowMs = 10 * 1000; // 10 seconds in milliseconds
     
     for (int i = 0; i < samples.length; i++) {
       final currentSample = samples[i];
@@ -151,7 +151,7 @@ class EEGChart extends StatelessWidget {
       final thetaAlphaSum = currentSample.theta + currentSample.alpha;
       if (thetaAlphaSum == 0.0) continue; // Skip if division by zero
       
-      // Collect focus values from the last 15 seconds
+      // Collect focus values from the last 10 seconds
       final windowStartTime = currentTimestamp - movingAverageWindowMs;
       final focusValues = <double>[];
       
@@ -159,7 +159,7 @@ class EEGChart extends StatelessWidget {
         final sample = samples[j];
         final sampleTimestamp = sample.absoluteTimestamp.millisecondsSinceEpoch.toDouble();
         
-        // Only include samples within the 15-second window
+        // Only include samples within the 10-second window
         if (sampleTimestamp >= windowStartTime) {
           final sampleThetaAlphaSum = sample.theta + sample.alpha;
           if (sampleThetaAlphaSum != 0.0) {
