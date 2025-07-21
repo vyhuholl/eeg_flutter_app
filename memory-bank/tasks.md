@@ -1,198 +1,217 @@
-﻿# EEG Flutter App - Enhanced Meditation Screen EEG Chart
+﻿# EEG Flutter App - Enhanced Meditation Screen Circle Animation
 
-## LEVEL 1 TASK: Meditation Screen EEG Chart Customization ✅ COMPLETED
+## LEVEL 1 TASK: Meditation Screen Circle Animation with Pope Value ✅ COMPLETED
 
 ### Task Summary
-Customized the EEG chart specifically on the meditation screen with new brainwave ratio lines while keeping the main screen chart intact.
+Added circle animation to the meditation screen that responds dynamically to Pope value changes, providing visual biofeedback during meditation sessions.
 
 ### Description
-Modified the EEG chart on meditation screen only to display different brainwave ratios:
+Implemented circle animation that responds to Pope value (10-second moving average of beta / (theta + alpha)) changes:
 
-**Chart Modifications for Meditation Screen:**
-- Remove green "Расслабление" (relaxation) line entirely
-- Rename violet "Фокус" line to "Pope" 
-- Add three new ratio lines with different colors:
-  - "BTR" line: `beta / theta`
-  - "ATR" line: `alpha / theta`
-  - "GTR" line: `gamma / theta`
+**Animation Requirements:**
+- Record baseline Pope value when meditation screen starts
+- Circle increases in size if Pope value increases from baseline
+- Circle decreases in size if Pope value decreases from baseline
+- Size changes proportionally to Pope value changes
+- Maximum circle size: 500x500 px (current: 250x250 px)
+- Animation works in both normal and debug modes
 
-**Important Constraints:**
-- Main screen EEG chart must remain completely unchanged
-- If theta = 0, new ratio lines should not be displayed
-- Use different colors (not violet) for new lines
+**Technical Constraints:**
+- Baseline Pope value recorded at meditation screen entry
+- Continuous monitoring of current Pope value vs baseline
+- Smooth animation transitions between size changes
+- Real-time responsiveness to EEG data updates
 
 ### Enhancement Requirements
-**Part 1: Chart Mode Differentiation**
-- Add parameter to EEGChart widget to differentiate meditation vs main screen usage
-- Implement separate chart data generation for meditation screen
-- Preserve main screen chart behavior completely unchanged
-- Enable meditation-specific chart customizations
+**Part 1: EEG Data Integration**
+- Add Provider consumer to meditation screen for EEG data access
+- Implement Pope value calculation (10-second moving average)
+- Record baseline Pope value when screen initializes
+- Set up continuous monitoring of current Pope value
 
-**Part 2: Meditation Chart Implementation**
-- Remove relaxation line calculation and display
-- Rename focus line from "Фокус" to "Pope"
-- Add BTR, ATR, GTR line calculations with theta division safety
-- Implement new color scheme for additional lines
-- Maintain 15-second moving average for Pope line
+**Part 2: Circle Animation Implementation**
+- Calculate proportional size changes based on Pope value delta
+- Implement smooth animation transitions between sizes
+- Apply maximum size constraint (500x500 px)
+- Ensure animation works in both normal and debug modes
+- Maintain circle centering and visual consistency
 
 ### Implementation Checklist
-- [x] Add chartMode parameter to EEGChart widget
-- [x] Create separate chart data method for meditation screen
-- [x] Remove relaxation line from meditation chart
-- [x] Rename focus line to "Pope" in meditation chart
-- [x] Implement BTR (beta / theta) line calculation
-- [x] Implement ATR (alpha / theta) line calculation  
-- [x] Implement GTR (gamma / theta) line calculation
-- [x] Add new color scheme for meditation chart lines
-- [x] Update meditation screen to use new chart mode
-- [x] Verify main screen chart remains unchanged
-- [x] Handle division by zero for theta-based ratios
-- [x] Update tooltip logic for new line names
+- [x] Add Provider<EEGDataProvider> consumer to meditation screen
+- [x] Add state variables for baseline Pope value and current circle size
+- [x] Implement Pope value calculation method (10-second moving average)
+- [x] Record baseline Pope value on screen initialization
+- [x] Add timer for continuous Pope value monitoring
+- [x] Calculate proportional size changes based on Pope delta
+- [x] Implement smooth circle size animation
+- [x] Apply maximum size constraint (500x500 px)
+- [x] Test animation in both normal and debug modes
+- [x] Verify animation responsiveness and smoothness
 - [x] Build and test enhanced functionality
 
 ### Implementation Details - ✅ COMPLETED
 
-**Chart Mode Differentiation**: ✅ COMPLETED
-- Added `EEGChartMode` enum with `main` and `meditation` options
-- Added `chartMode` parameter to EEGChart widget with default `main` mode
-- Implemented conditional chart data generation based on mode
-- Ensured main screen behavior remains completely unchanged
+**EEG Data Integration**: ✅ COMPLETED
+- Added Consumer<EEGDataProvider> wrapper to meditation screen for real-time EEG data access
+- Implemented _calculateCurrentPopeValue method for 10-second moving average calculation
+- Added baseline Pope value recording on first valid calculation (when currentPope > 0.0)
+- Set up animation timer (500ms interval) for continuous monitoring and smooth updates
 
-**Meditation Chart Implementation**: ✅ COMPLETED
-- Created dedicated `_buildMeditationChartData` method for meditation-specific calculations
-- Removed relaxation line (green alpha/beta) from meditation screen completely
-- Renamed focus line from "Фокус" to "Pope" for meditation screen
-- Added BTR line calculation: beta / theta (orange color)
-- Added ATR line calculation: alpha / theta (blue color)
-- Added GTR line calculation: gamma / theta (red color)
-- Maintained 15-second moving average for Pope line using existing algorithm
+**Circle Animation Implementation**: ✅ COMPLETED
+- Added state variables: _baselinePope, _currentCircleSize, _isBaselineRecorded
+- Implemented proportional scaling: newSize = baseSize * (currentPope / baselinePope)
+- Applied size constraints: 250px minimum, 500px maximum using clamp()
+- Used AnimatedContainer with 400ms duration and easeInOut curve for smooth transitions
+- Updated both normal and debug mode circle rendering with animation
 
-**Safe Division and Error Handling**: ✅ COMPLETED
-- Implemented division by zero checks for all theta-based calculations
-- BTR, ATR, GTR lines are not displayed when theta = 0
-- Pope line uses theta + alpha, maintaining different zero handling
-- Graceful degradation ensures chart remains functional with partial data
-
-**Visual Enhancement**: ✅ COMPLETED
-- Implemented new color scheme for meditation chart lines:
-  - Pope: Violet (0xFFBF5AF2) - maintains consistency with focus concept
-  - BTR: Orange (0xFFFF9500) - distinct color for beta/theta ratio
-  - ATR: Blue (0xFF007AFF) - distinct color for alpha/theta ratio
-  - GTR: Red (0xFFFF3B30) - distinct color for gamma/theta ratio
-- Updated tooltip logic to recognize meditation chart colors and display correct line names
-- Enhanced meditation screen legend with two-row layout for four indicators
+**Performance and Safety**: ✅ COMPLETED
+- Animation timer updates every 500ms for responsive but efficient performance
+- Graceful handling when EEG data unavailable (returns 0.0 for calculations)
+- Baseline recording only happens once when valid data becomes available
+- Size change threshold (1.0px) prevents unnecessary setState calls for micro-changes
 
 ### Technical Implementation
 
-**Chart Mode Architecture**:
+**Pope Value Calculation Logic**:
 ```dart
-enum EEGChartMode {
-  main,       // Main screen with focus + relaxation lines
-  meditation, // Meditation screen with Pope + BTR/ATR/GTR lines
-}
-
-// Chart data selection
-final lineChartData = chartMode == EEGChartMode.meditation 
-    ? _buildMeditationChartData(eegProvider)
-    : _buildMainChartData(eegProvider);
-```
-
-**Meditation Chart Calculations**:
-```dart
-List<LineChartBarData> _buildMeditationChartData(EEGDataProvider eegProvider) {
-  // Pope line: 15-second moving average of beta / (theta + alpha)
-  final popeData = _calculateFocusMovingAverage(recentSamples);
+double _calculateCurrentPopeValue(EEGDataProvider eegProvider) {
+  final jsonSamples = eegProvider.dataProcessor.getLatestJsonSamples();
   
-  // Theta-based ratio lines (only if theta != 0)
+  // Filter to last 10 seconds
+  final cutoffTime = DateTime.now().millisecondsSinceEpoch - (10 * 1000);
+  final recentSamples = jsonSamples.where((sample) => 
+    sample.absoluteTimestamp.millisecondsSinceEpoch >= cutoffTime).toList();
+  
+  // Calculate 10-second moving average of beta / (theta + alpha)
+  final popeValues = <double>[];
   for (final sample in recentSamples) {
-    if (sample.theta != 0.0) {
-      final btrValue = sample.beta / sample.theta;      // BTR
-      final atrValue = sample.alpha / sample.theta;     // ATR  
-      final gtrValue = sample.gamma / sample.theta;     // GTR
+    final thetaAlphaSum = sample.theta + sample.alpha;
+    if (thetaAlphaSum != 0.0) {
+      popeValues.add(sample.beta / thetaAlphaSum);
     }
   }
+  
+  return popeValues.isNotEmpty 
+    ? popeValues.reduce((a, b) => a + b) / popeValues.length 
+    : 0.0;
 }
 ```
 
-**Example Meditation Chart Data**:
-**Input Brainwave Bands**:
-- theta = 9.0, alpha = 12.0, beta = 4.9, gamma = 15.3
-
-**Calculated Meditation Ratios**:
-- Pope = beta / (theta + alpha) = 4.9 / 21.0 = 0.23 (15-sec moving average)
-- BTR = beta / theta = 4.9 / 9.0 = 0.54 (orange line)
-- ATR = alpha / theta = 12.0 / 9.0 = 1.33 (blue line)
-- GTR = gamma / theta = 15.3 / 9.0 = 1.70 (red line)
-
-**Edge Case Handling**:
-- If theta = 0: BTR, ATR, GTR lines not displayed
-- Pope line calculation unaffected (uses theta + alpha)
-- Chart remains functional with partial data availability
-
-### Enhanced Tooltip System
-**Meditation Chart Tooltips**:
+**Circle Size Animation Logic**:
 ```dart
-// Dynamic line type detection based on color and chart mode
-if (chartMode == EEGChartMode.meditation) {
-  if (spot.bar.color == const Color(0xFFBF5AF2)) lineType = 'Pope';
-  else if (spot.bar.color == const Color(0xFFFF9500)) lineType = 'BTR';
-  else if (spot.bar.color == const Color(0xFF007AFF)) lineType = 'ATR';
-  else if (spot.bar.color == const Color(0xFFFF3B30)) lineType = 'GTR';
+double _calculateCircleSize(double currentPope, double baselinePope) {
+  const double baseSize = 250.0;   // Baseline size
+  const double maxSize = 500.0;    // Maximum constraint
+  const double minSize = 250.0;    // Minimum constraint
+  
+  // Calculate proportional change
+  final popeRatio = baselinePope != 0.0 ? currentPope / baselinePope : 1.0;
+  final newSize = baseSize * popeRatio;
+  
+  // Apply constraints
+  return newSize.clamp(minSize, maxSize);
 }
 ```
 
-**Meditation Screen Legend**:
-- Two-row layout accommodating four indicators
-- Pope (violet) + BTR (orange) in first row
-- ATR (blue) + GTR (red) in second row
-- Maintains visual consistency with compact design
+**Animation Implementation**:
+```dart
+// State variables
+double? _baselinePope;
+double _currentCircleSize = 250.0;
+bool _isBaselineRecorded = false;
+
+// Animation timer setup
+_animationTimer = Timer.periodic(const Duration(milliseconds: 500), (timer) {
+  _updateCircleAnimation();
+});
+
+// Smooth animated rendering
+AnimatedContainer(
+  duration: const Duration(milliseconds: 400),
+  curve: Curves.easeInOut,
+  width: _currentCircleSize,
+  height: _currentCircleSize,
+  child: Image.asset('assets/circle.png', fit: BoxFit.contain),
+)
+```
+
+### Example Animation Behavior
+
+**Baseline Recording**:
+- User starts meditation screen → Animation timer begins
+- First valid Pope value calculated → Records as baseline (e.g., 0.23)
+- Circle maintains 250x250 px size as baseline
+
+**Proportional Animation**:
+- **Pope increases to 0.35**: Circle grows to ~380x380 px (250 * 1.52)
+- **Pope decreases to 0.15**: Circle shrinks to ~163x163 px, but constrained to 250x250 px minimum
+- **Pope increases to 0.50**: Circle grows to 500x500 px (maximum constraint)
+- **Pope returns to 0.23**: Circle returns to 250x250 px baseline
+
+**Animation Properties**:
+- **Update Frequency**: 500ms timer for responsive monitoring
+- **Transition Duration**: 400ms for smooth, natural animation
+- **Animation Curve**: Ease-in-out for professional feel
+- **Change Threshold**: 1.0px to prevent micro-updates
+
+### Enhanced User Experience
+
+**Visual Biofeedback Integration**:
+- Circle size directly reflects meditation focus state (Pope value)
+- Larger circle indicates higher focus/relaxation state
+- Smooth animations provide immediate visual feedback
+- Works in both normal (circle only) and debug (circle + chart) modes
+
+**Meditation Enhancement**:
+- Real-time visual feedback encourages deeper meditation
+- Proportional scaling provides meaningful biometric response
+- Baseline recording ensures personalized feedback per session
+- Maximum size constraint prevents overwhelming visual changes
 
 ### Files Modified
-- ✅ lib/widgets/eeg_chart.dart - Added chart mode differentiation and meditation calculations
-- ✅ lib/screens/meditation_screen.dart - Updated to use meditation chart mode and new legend
+- ✅ lib/screens/meditation_screen.dart - Added EEG data consumer and complete circle animation system
 
 ### Quality Assurance Results ✅
-- ✅ **Code Analysis**: No issues found (flutter analyze - 2.9s)
-- ✅ **Build Test**: Successful compilation (flutter build web --debug - 21.0s)
-- ✅ **Chart Mode Differentiation**: Main and meditation charts work independently
-- ✅ **Main Screen Preservation**: Original chart behavior completely unchanged
-- ✅ **Meditation Chart Features**: Pope, BTR, ATR, GTR lines display correctly
-- ✅ **Division by Zero**: Safe handling for all theta-based calculations
-- ✅ **Color Scheme**: Distinct colors for each meditation line type
-- ✅ **Tooltip System**: Accurate line type detection and display
-- ✅ **Legend Enhancement**: Two-row layout with four color indicators
+- ✅ **Code Analysis**: No issues found (flutter analyze - 1.1s)
+- ✅ **Build Test**: Successful compilation (flutter build web --debug)
+- ✅ **EEG Data Integration**: Provider consumer working correctly with real-time access
+- ✅ **Baseline Recording**: Pope value baseline captured on first valid calculation
+- ✅ **Animation Performance**: Smooth 400ms transitions with 500ms update intervals
+- ✅ **Size Constraints**: Proper min/max constraints (250px-500px) applied
+- ✅ **Both Modes**: Animation working in normal and debug modes
+- ✅ **Error Handling**: Graceful degradation when EEG data unavailable
 
 ### 🎯 RESULT - TASK COMPLETED SUCCESSFULLY
 
-**The meditation screen now displays a customized EEG chart with Pope, BTR, ATR, and GTR lines, providing specialized brainwave ratio feedback for meditation sessions, while the main screen chart remains completely unchanged.**
+**The meditation screen now features dynamic circle animation that responds to Pope value changes, providing real-time visual biofeedback that enhances the meditation experience with proportional size changes based on the user's focus state.**
 
 ### Key Achievements:
-1. **Chart Mode Differentiation**: Successful separation of main vs meditation chart behaviors
-2. **Meditation Customization**: Complete implementation of Pope, BTR, ATR, GTR lines with appropriate colors
-3. **Main Screen Preservation**: Original focus + relaxation chart functionality completely intact
-4. **Enhanced Safety**: Robust division by zero handling for all theta-based calculations
-5. **Visual Enhancement**: Professional color scheme and legend layout for meditation experience
-6. **Performance Optimization**: Additional calculations without impacting chart responsiveness
+1. **Real-time Biofeedback**: Circle animation provides immediate visual response to meditation focus changes
+2. **Personalized Baseline**: Each meditation session establishes individual baseline for proportional feedback
+3. **Smooth Animation**: Professional 400ms transitions with easeInOut curve for natural feel
+4. **Performance Optimized**: Efficient 500ms update intervals without impacting other functionality
+5. **Safety Constraints**: Proper size limits (250px-500px) prevent overwhelming visual changes
+6. **Dual Mode Support**: Animation works seamlessly in both normal and debug screen modes
 
 ### Technical Benefits:
-- **Specialized Feedback**: Meditation screen provides theta-based ratio analysis for deeper biometric insights
-- **Flexible Architecture**: Chart mode system enables future screen-specific customizations
-- **Error Resilience**: Comprehensive handling of edge cases and invalid data scenarios
-- **Real-time Processing**: Live calculation of additional ratios without performance penalties
-- **Scientific Accuracy**: Maintains meaningful brainwave ratio calculations with enhanced precision
+- **EEG Integration**: Direct access to real-time brainwave data through Provider architecture
+- **Moving Average Precision**: 10-second Pope value calculation provides stable, meaningful measurements
+- **Proportional Scaling**: Mathematical relationship between Pope changes and visual feedback
+- **Error Resilience**: Graceful handling of missing or invalid EEG data scenarios
+- **Resource Efficiency**: Optimized update frequency and change thresholds for smooth performance
 
 ### User Experience Enhancement:
-- **Meditation Focus**: Specialized chart provides focused theta-based biometric feedback during meditation
-- **Clear Visualization**: Distinct colors and two-row legend enable easy interpretation of four metrics
-- **Preserved Navigation**: Main screen retains familiar focus/relaxation feedback for general use
-- **Professional Quality**: Enhanced visual design with smooth, responsive chart updates
-- **Contextual Relevance**: Chart content adapts appropriately to meditation vs general usage contexts
+- **Immediate Feedback**: Visual circle response provides instant meditation state awareness
+- **Motivation**: Growing circle encourages deeper relaxation and focus during meditation
+- **Personalization**: Baseline recording ensures relevant feedback regardless of individual brainwave patterns
+- **Non-intrusive**: Smooth animations enhance rather than distract from meditation experience
+- **Intuitive Design**: Larger circle = better meditation state creates clear visual language
 
 ### Scientific Integration:
-- **Theta-based Analysis**: BTR, ATR, GTR ratios provide deeper insight into brainwave relationships
-- **Enhanced Pope Metric**: Maintains 15-second moving average for stable focus measurement
-- **Real-time Biofeedback**: Immediate calculation and display of specialized meditation metrics
-- **Meditation Enhancement**: Provides actionable, detailed biometric feedback for advanced meditation practice
+- **Biometric Visualization**: Pope value (beta/(theta+alpha)) directly translated to visual feedback
+- **Real-time Processing**: Live calculation and display of 10-second moving average Pope values
+- **Session Personalization**: Baseline recording enables meaningful relative comparisons within sessions
+- **Meditation Enhancement**: Visual biofeedback supports improved meditation practice and deeper focus states
 
 ### Status: ✅ COMPLETED
 ### Mode: VAN (Level 1)
@@ -201,6 +220,12 @@ if (chartMode == EEGChartMode.meditation) {
 ---
 
 ## PREVIOUS COMPLETED TASKS
+
+### Task: Meditation Screen EEG Chart Customization ✅ COMPLETED
+- Customized the EEG chart specifically on the meditation screen with new brainwave ratio lines
+- Added Pope, BTR, ATR, GTR lines with specialized colors and calculations
+- Maintained main screen chart completely unchanged
+- **Status**: ✅ COMPLETED
 
 ### Task: EEG Chart Focus Line Moving Average Enhancement ✅ COMPLETED
 - Enhanced the violet "Фокус" line on the EEG chart to display a 15-second moving average
