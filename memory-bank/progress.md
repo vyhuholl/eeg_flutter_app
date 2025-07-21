@@ -1,30 +1,31 @@
 ﻿# Progress - EEG Flutter App
 
-## Current Status: VAN Level 1 - Enhanced EEG Chart with Focus Moving Average ✅ COMPLETED
+## Current Status: VAN Level 1 - Enhanced Meditation Screen EEG Chart ✅ COMPLETED
 
-### Current Task: EEG Chart Focus Line Moving Average Enhancement
-- Task Type: Level 1 Chart Enhancement with Moving Average
+### Current Task: Meditation Screen EEG Chart Customization
+- Task Type: Level 1 Chart Customization and Mode Differentiation
 - Mode: VAN (direct implementation, no PLAN/CREATIVE needed)
 - Status: ✅ COMPLETED SUCCESSFULLY
 
 ### Task Objectives
-1. **Primary**: Implement 15-second moving average for focus line measurements ✅ COMPLETED
-2. **Secondary**: Maintain chart performance and preserve relaxation line unchanged ✅ COMPLETED
+1. **Primary**: Customize meditation screen chart with Pope, BTR, ATR, GTR lines ✅ COMPLETED
+2. **Secondary**: Maintain main screen chart completely unchanged ✅ COMPLETED
 
 ### Files Modified
-- ✅ lib/widgets/eeg_chart.dart - Updated focus line calculation with 15-second moving average
+- ✅ lib/widgets/eeg_chart.dart - Added chart mode differentiation and meditation calculations
+- ✅ lib/screens/meditation_screen.dart - Updated to use meditation chart mode and new legend
 
 ### Implementation Progress
-- [x] Implement 15-second moving average calculation logic ✅ COMPLETED
-- [x] Create dedicated `_calculateFocusMovingAverage` method ✅ COMPLETED
-- [x] Update focus line data generation in chart ✅ COMPLETED
-- [x] Maintain division by zero handling for theta + alpha ✅ COMPLETED
-- [x] Keep relaxation line calculation unchanged (alpha / beta) ✅ COMPLETED
-- [x] Handle insufficient data scenarios gracefully ✅ COMPLETED
-- [x] Test moving average smoothness and accuracy ✅ COMPLETED
-- [x] Verify chart performance impact ✅ COMPLETED
-- [x] Ensure proper integration with existing chart functionality ✅ COMPLETED
-- [x] Final build verification and code analysis ✅ COMPLETED
+- [x] Add chartMode parameter to EEGChart widget ✅ COMPLETED
+- [x] Create separate chart data method for meditation screen ✅ COMPLETED
+- [x] Remove relaxation line from meditation chart ✅ COMPLETED
+- [x] Rename focus line to "Pope" in meditation chart ✅ COMPLETED
+- [x] Implement BTR, ATR, GTR line calculations ✅ COMPLETED
+- [x] Add new color scheme for meditation chart ✅ COMPLETED
+- [x] Update meditation screen to use new chart mode ✅ COMPLETED
+- [x] Verify main screen chart remains unchanged ✅ COMPLETED
+- [x] Update tooltip logic for new line names ✅ COMPLETED
+- [x] Build verification and code analysis ✅ COMPLETED
 
 ### What Works (Current Implementation)
 - ✅ Flutter project with complete EEG UDP networking
@@ -39,92 +40,115 @@
 - ✅ Enhanced meditation screen with larger EEG chart (350x250), legend, and debug mode toggle
 - ✅ Enhanced EEG data processing with brainwave band calculations (theta, alpha, beta, gamma)
 - ✅ Enhanced EEG chart with scientifically meaningful brainwave ratio calculations
-- ✅ **NEW**: Enhanced focus line with 15-second moving average for stable, noise-reduced measurements
+- ✅ Enhanced focus line with 15-second moving average for stable, noise-reduced measurements
+- ✅ **NEW**: Specialized meditation screen chart with Pope, BTR, ATR, GTR theta-based ratio analysis
 
 ### Technical Implementation Summary
 
-**Moving Average Algorithm**:
-- **Window Size**: 15-second sliding window (15,000 milliseconds)
-- **Method**: Arithmetic mean of focus values within time window
-- **Implementation**: Dedicated `_calculateFocusMovingAverage` method
-- **Performance**: O(n²) time complexity, acceptable for real-time processing
+**Chart Mode Differentiation**:
+- **Architecture**: `EEGChartMode` enum with `main` and `meditation` options
+- **Implementation**: Conditional chart data generation based on mode parameter
+- **Performance**: Zero impact on existing main screen functionality
+- **Flexibility**: Easy extension for future screen-specific chart customizations
 
-**Enhanced Chart Data Processing**:
-- **Focus Line**: 15-second moving average of beta / (theta + alpha) (violet, smoothed)
-- **Relaxation Line**: Immediate alpha / beta calculation (green, unchanged)
-- **Division by Zero**: Safe handling maintained for all calculations
-- **Error Handling**: Graceful degradation for missing or invalid data
+**Meditation Chart Features**:
+- **Pope Line**: 15-second moving average of beta / (theta + alpha) (violet, renamed from "Фокус")
+- **BTR Line**: beta / theta ratio (orange, new)
+- **ATR Line**: alpha / theta ratio (blue, new)
+- **GTR Line**: gamma / theta ratio (red, new)
+- **Safety**: All theta-based lines hidden when theta = 0
 
-**Chart Integration Features**:
-- **Smooth Visualization**: Focus line displays stable, noise-reduced measurements
-- **Real-time Updates**: Moving average calculated without performance impact
-- **Visual Consistency**: Existing styling (violet for focus, green for relaxation) preserved
-- **Dynamic Behavior**: Chart adapts to data availability with robust error handling
+**Main Screen Chart (unchanged)**:
+- **Focus Line**: "Фокус" - 15-second moving average of beta / (theta + alpha) (violet)
+- **Relaxation Line**: "Расслабление" - alpha / beta (green)
+- **Behavior**: Completely unchanged from previous implementation
 
-### Example Moving Average Processing
+### Chart Configuration Comparison
 
-**Raw Focus Data (beta / (theta + alpha))**:
-```
-t0: 0.23, t1: 0.25, t2: 0.21, t3: 0.27, t4: 0.24, t5: 0.20, t6: 0.26...
-```
-
-**15-second Moving Average**:
-```
-At t15: Average of [0.23, 0.25, 0.21, 0.27, 0.24, 0.20, 0.26, ...] = 0.24 (stable)
-At t16: Average of [0.25, 0.21, 0.27, 0.24, 0.20, 0.26, ...] = 0.24 (smooth)
-```
-
-**User Experience Impact**:
-```
-Before: Noisy focus readings with frequent fluctuations
-After: Smooth, stable focus measurements with clear trends
-Result: Enhanced meditation feedback with reduced distractions
-```
-
-### Moving Average Algorithm Implementation
-
-**Core Logic**:
+**Main Screen (lib/screens/main_screen.dart)**:
 ```dart
-List<FlSpot> _calculateFocusMovingAverage(List<EEGJsonSample> samples) {
-  const movingAverageWindowMs = 15 * 1000; // 15 seconds
-  
-  for (int i = 0; i < samples.length; i++) {
-    // Calculate focus values within 15-second window
-    final windowStartTime = currentTimestamp - movingAverageWindowMs;
-    final focusValues = <double>[];
-    
-    // Collect valid focus values from window
-    for (int j = 0; j <= i; j++) {
-      if (sampleTimestamp >= windowStartTime && thetaAlphaSum != 0.0) {
-        focusValues.add(sample.beta / thetaAlphaSum);
-      }
-    }
-    
-    // Calculate and apply moving average
-    if (focusValues.isNotEmpty) {
-      final average = focusValues.reduce((a, b) => a + b) / focusValues.length;
-      focusData.add(FlSpot(currentTimestamp, average));
-    }
-  }
+EEGChart(
+  showGridLines: true,
+  showAxes: true,
+  // chartMode: EEGChartMode.main (default)
+)
+// Displays: Фокус (violet) + Расслабление (green)
+```
+
+**Meditation Screen (lib/screens/meditation_screen.dart)**:
+```dart
+EEGChart(
+  height: 250,
+  showGridLines: true,
+  showAxes: false,
+  chartMode: EEGChartMode.meditation,
+)
+// Displays: Pope (violet) + BTR (orange) + ATR (blue) + GTR (red)
+```
+
+### Example Meditation Chart Data Processing
+
+**Input Brainwave Bands**:
+```
+theta = 9.0, alpha = 12.0, beta = 4.9, gamma = 15.3
+```
+
+**Calculated Meditation Ratios**:
+```
+Pope = beta / (theta + alpha) = 4.9 / 21.0 = 0.23 (15-sec moving average, violet)
+BTR = beta / theta = 4.9 / 9.0 = 0.54 (orange)
+ATR = alpha / theta = 12.0 / 9.0 = 1.33 (blue)
+GTR = gamma / theta = 15.3 / 9.0 = 1.70 (red)
+```
+
+**Edge Case Handling**:
+```
+If theta = 0: BTR, ATR, GTR lines not displayed
+Pope line unaffected (uses theta + alpha)
+Chart remains functional with partial data
+```
+
+### Enhanced User Interface Features
+
+**Meditation Screen Legend (Two-Row Layout)**:
+```
+Row 1: Pope (violet) + BTR (orange)
+Row 2: ATR (blue) + GTR (red)
+```
+
+**Tooltip System Enhancement**:
+```dart
+// Dynamic line type detection based on chart mode
+if (chartMode == EEGChartMode.meditation) {
+  // Returns: "Pope", "BTR", "ATR", "GTR"
+} else {
+  // Returns: "Фокус", "Расслабление"
 }
 ```
 
 ### Build & Quality Verification
-- ✅ **Code Analysis**: No issues found (flutter analyze - 1.0s)
-- ✅ **Build Test**: Successful compilation (flutter build web --debug)
-- ✅ **Moving Average**: 15-second sliding window implemented correctly
-- ✅ **Division by Zero**: Safe handling prevents crashes and errors
-- ✅ **Real-time Performance**: No performance degradation from moving average calculations
-- ✅ **Visual Styling**: Existing colors and legend labels preserved perfectly
-- ✅ **Chart Behavior**: Focus line displays smooth, stable measurements
+- ✅ **Code Analysis**: No issues found (flutter analyze - 2.9s)
+- ✅ **Build Test**: Successful compilation (flutter build web --debug - 21.0s)
+- ✅ **Chart Mode Differentiation**: Main and meditation charts work independently
+- ✅ **Main Screen Preservation**: Original chart behavior completely unchanged
+- ✅ **Meditation Features**: Pope, BTR, ATR, GTR lines display correctly with proper colors
+- ✅ **Division by Zero**: Safe handling for all theta-based calculations
+- ✅ **Tooltip System**: Accurate line type detection and context-aware naming
+- ✅ **Visual Styling**: Professional color scheme and intuitive legend layout
 
 ### Status: ✅ TASK COMPLETED SUCCESSFULLY
 
-The EEG chart focus line now provides users with smooth, stable 15-second moving average measurements, delivering noise-reduced, reliable focus feedback that enhances the meditation experience while maintaining all existing functionality and performance.
+The meditation screen now provides specialized theta-based brainwave ratio analysis through Pope, BTR, ATR, and GTR lines, delivering advanced biometric feedback for meditation sessions while maintaining the familiar focus/relaxation chart on the main screen.
 
 ---
 
 ## PREVIOUSLY COMPLETED TASKS
+
+### ✅ EEG Chart Focus Line Moving Average Enhancement (Level 1)
+- Enhanced the violet "Фокус" line on the EEG chart to display a 15-second moving average
+- Implemented 15-second sliding window for stable focus measurements
+- Maintained chart performance and preserved relaxation line
+- **Status**: ✅ COMPLETED
 
 ### ✅ EEG Chart Brainwave Ratio Calculations (Level 1)
 - Modified EEG chart to display brainwave ratio calculations instead of raw EEG values

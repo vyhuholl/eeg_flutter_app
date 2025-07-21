@@ -12,17 +12,25 @@ class YAxisRange {
   const YAxisRange({required this.min, required this.max});
 }
 
+/// Chart modes for different screens
+enum EEGChartMode {
+  main,       // Main screen with focus + relaxation lines
+  meditation, // Meditation screen with Pope + BTR/ATR/GTR lines
+}
+
 /// Real-time EEG chart widget with time-based visualization
 class EEGChart extends StatelessWidget {
   final double height;
   final bool showGridLines;
   final bool showAxes;
+  final EEGChartMode chartMode;
 
   const EEGChart({
     super.key,
     this.height = 440,
     this.showGridLines = true,
     this.showAxes = true,
+    this.chartMode = EEGChartMode.main,
   });
 
   @override
@@ -47,7 +55,9 @@ class EEGChart extends StatelessWidget {
   }
 
   LineChartData _buildLineChartData(EEGDataProvider eegProvider) {
-    final lineChartData = _buildDualLineChartData(eegProvider);
+    final lineChartData = chartMode == EEGChartMode.meditation 
+        ? _buildMeditationChartData(eegProvider)
+        : _buildMainChartData(eegProvider);
     
     if (lineChartData.isEmpty) {
       return _buildEmptyChart();
@@ -69,8 +79,8 @@ class EEGChart extends StatelessWidget {
     );
   }
 
-  /// Build dual line chart data for Focus and Relaxation using brainwave ratios
-  List<LineChartBarData> _buildDualLineChartData(EEGDataProvider eegProvider) {
+  /// Build main screen chart data for Focus and Relaxation using brainwave ratios
+  List<LineChartBarData> _buildMainChartData(EEGDataProvider eegProvider) {
     final jsonSamples = eegProvider.dataProcessor.getLatestJsonSamples();
     
     if (jsonSamples.isEmpty) return [];
@@ -167,6 +177,102 @@ class EEGChart extends StatelessWidget {
     }
     
     return focusData;
+  }
+
+  /// Build meditation screen chart data with Pope, BTR, ATR, GTR lines
+  List<LineChartBarData> _buildMeditationChartData(EEGDataProvider eegProvider) {
+    final jsonSamples = eegProvider.dataProcessor.getLatestJsonSamples();
+    
+    if (jsonSamples.isEmpty) return [];
+    
+    // Filter to last 120 seconds
+    final cutoffTime = DateTime.now().millisecondsSinceEpoch - (120 * 1000);
+    final recentSamples = jsonSamples.where((sample) => 
+      sample.absoluteTimestamp.millisecondsSinceEpoch >= cutoffTime).toList();
+    
+    if (recentSamples.isEmpty) return [];
+    
+    // Calculate meditation-specific lines
+    final popeData = _calculateFocusMovingAverage(recentSamples); // Reuse for Pope line
+    final btrData = <FlSpot>[];
+    final atrData = <FlSpot>[];
+    final gtrData = <FlSpot>[];
+    
+    // Calculate BTR, ATR, GTR lines (theta-based ratios)
+    for (final sample in recentSamples) {
+      final timestamp = sample.absoluteTimestamp.millisecondsSinceEpoch.toDouble();
+      
+      // Only calculate if theta is not zero
+      if (sample.theta != 0.0) {
+        // BTR line: beta / theta
+        final btrValue = sample.beta / sample.theta;
+        btrData.add(FlSpot(timestamp, btrValue));
+        
+        // ATR line: alpha / theta
+        final atrValue = sample.alpha / sample.theta;
+        atrData.add(FlSpot(timestamp, atrValue));
+        
+        // GTR line: gamma / theta
+        final gtrValue = sample.gamma / sample.theta;
+        gtrData.add(FlSpot(timestamp, gtrValue));
+      }
+    }
+    
+    final lines = <LineChartBarData>[];
+    
+    // Add Pope line (violet) if we have data
+    if (popeData.isNotEmpty) {
+      lines.add(LineChartBarData(
+        spots: popeData,
+        isCurved: false,
+        color: const Color(0xFFBF5AF2), // Violet
+        barWidth: 2.0,
+        isStrokeCapRound: false,
+        dotData: const FlDotData(show: false),
+        belowBarData: BarAreaData(show: false),
+      ));
+    }
+    
+    // Add BTR line (orange) if we have data
+    if (btrData.isNotEmpty) {
+      lines.add(LineChartBarData(
+        spots: btrData,
+        isCurved: false,
+        color: const Color(0xFFFF9500), // Orange
+        barWidth: 2.0,
+        isStrokeCapRound: false,
+        dotData: const FlDotData(show: false),
+        belowBarData: BarAreaData(show: false),
+      ));
+    }
+    
+    // Add ATR line (blue) if we have data
+    if (atrData.isNotEmpty) {
+      lines.add(LineChartBarData(
+        spots: atrData,
+        isCurved: false,
+        color: const Color(0xFF007AFF), // Blue
+        barWidth: 2.0,
+        isStrokeCapRound: false,
+        dotData: const FlDotData(show: false),
+        belowBarData: BarAreaData(show: false),
+      ));
+    }
+    
+    // Add GTR line (red) if we have data
+    if (gtrData.isNotEmpty) {
+      lines.add(LineChartBarData(
+        spots: gtrData,
+        isCurved: false,
+        color: const Color(0xFFFF3B30), // Red
+        barWidth: 2.0,
+        isStrokeCapRound: false,
+        dotData: const FlDotData(show: false),
+        belowBarData: BarAreaData(show: false),
+      ));
+    }
+    
+    return lines;
   }
 
   /// Calculate adaptive Y-axis range from chart data
@@ -310,31 +416,47 @@ class EEGChart extends StatelessWidget {
       enabled: true,
       touchTooltipData: LineTouchTooltipData(
         tooltipBgColor: const Color(0xFF2C2C2E),
-        getTooltipItems: (touchedSpots) {
-          return touchedSpots.map((spot) {
-            final date = DateTime.fromMillisecondsSinceEpoch(spot.x.toInt());
-            final timeStr = '${date.second}.${(date.millisecond / 100).floor()}s';
-            
-            // Determine line type based on color since line indices can vary
-            String lineType;
-            if (spot.bar.color == const Color(0xFFBF5AF2)) {
-              lineType = 'Фокус';
-            } else if (spot.bar.color == const Color(0xFF32D74B)) {
-              lineType = 'Расслабление';
-            } else {
-              lineType = 'Неизвестно';
-            }
-            
-            return LineTooltipItem(
-              '$lineType: ${spot.y.toStringAsFixed(2)}\nВремя: $timeStr',
-              const TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-              ),
-            );
-          }).toList();
-        },
+                  getTooltipItems: (touchedSpots) {
+            return touchedSpots.map((spot) {
+              final date = DateTime.fromMillisecondsSinceEpoch(spot.x.toInt());
+              final timeStr = '${date.second}.${(date.millisecond / 100).floor()}s';
+              
+              // Determine line type based on color and chart mode
+              String lineType;
+              if (chartMode == EEGChartMode.meditation) {
+                // Meditation chart colors
+                if (spot.bar.color == const Color(0xFFBF5AF2)) {
+                  lineType = 'Pope';
+                } else if (spot.bar.color == const Color(0xFFFF9500)) {
+                  lineType = 'BTR';
+                } else if (spot.bar.color == const Color(0xFF007AFF)) {
+                  lineType = 'ATR';
+                } else if (spot.bar.color == const Color(0xFFFF3B30)) {
+                  lineType = 'GTR';
+                } else {
+                  lineType = 'Неизвестно';
+                }
+              } else {
+                // Main chart colors
+                if (spot.bar.color == const Color(0xFFBF5AF2)) {
+                  lineType = 'Фокус';
+                } else if (spot.bar.color == const Color(0xFF32D74B)) {
+                  lineType = 'Расслабление';
+                } else {
+                  lineType = 'Неизвестно';
+                }
+              }
+              
+              return LineTooltipItem(
+                '$lineType: ${spot.y.toStringAsFixed(2)}\nВремя: $timeStr',
+                const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              );
+            }).toList();
+          },
       ),
     );
   }

@@ -54,42 +54,98 @@ class _MeditationScreenState extends State<MeditationScreen> {
   }
 
   Widget _buildLegend() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+    return Column(
       children: [
-        // Focus legend item
+        // First row: Pope and BTR
         Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              width: 16,
-              height: 3,
-              color: const Color(0xFFBF5AF2), // Violet
+            // Pope indicator (violet)
+            Row(
+              children: [
+                Container(
+                  width: 16,
+                  height: 3,
+                  color: const Color(0xFFBF5AF2), // Violet
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  'Pope',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: 8),
-            const Text(
-              'Фокус',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-              ),
+            
+            const SizedBox(width: 24),
+            
+            // BTR indicator (orange)
+            Row(
+              children: [
+                Container(
+                  width: 16,
+                  height: 3,
+                  color: const Color(0xFFFF9500), // Orange
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  'BTR',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
-        // Relaxation legend item
+        
+        const SizedBox(height: 8),
+        
+        // Second row: ATR and GTR
         Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              width: 16,
-              height: 3,
-              color: const Color(0xFF32D74B), // Green
+            // ATR indicator (blue)
+            Row(
+              children: [
+                Container(
+                  width: 16,
+                  height: 3,
+                  color: const Color(0xFF007AFF), // Blue
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  'ATR',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: 8),
-            const Text(
-              'Расслабление',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-              ),
+            
+            const SizedBox(width: 24),
+            
+            // GTR indicator (red)
+            Row(
+              children: [
+                Container(
+                  width: 16,
+                  height: 3,
+                  color: const Color(0xFFFF3B30), // Red
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  'GTR',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -115,13 +171,14 @@ class _MeditationScreenState extends State<MeditationScreen> {
           // Enhanced EEG chart with legend on the right
           Column(
             children: [
-              // EEG chart - bigger and wider
+              // EEG chart - bigger and wider with meditation mode
               const SizedBox(
                 width: 350,
                 child: EEGChart(
                   height: 250,
                   showGridLines: true,
                   showAxes: false,
+                  chartMode: EEGChartMode.meditation,
                 ),
               ),
               

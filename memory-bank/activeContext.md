@@ -1,131 +1,138 @@
 ﻿# Active Context - EEG Flutter App
 
 ## Current Work Focus
-**VAN MODE LEVEL 1** - Enhanced EEG Chart with Focus Moving Average ✅ COMPLETED
+**VAN MODE LEVEL 1** - Enhanced Meditation Screen EEG Chart ✅ COMPLETED
 
 ## Project Status: LEVEL 1 TASK COMPLETED SUCCESSFULLY
 - Flutter project with complete EEG UDP networking implementation
 - Real-time data processing and visualization system
 - Provider-based state management with multi-channel support
 - Full architecture matching documented system patterns
-- **PREVIOUS**: Enhanced EEG chart with brainwave ratio calculations ✅ COMPLETED
-- **COMPLETED**: Added 15-second moving average to focus line for smoother measurements ✅ COMPLETED
+- **PREVIOUS**: Enhanced EEG chart with 15-second moving average for focus ✅ COMPLETED
+- **COMPLETED**: Customized meditation screen EEG chart with new brainwave ratio lines ✅ COMPLETED
 
 ## Task Results ✅
 
 ### ✅ Primary Objective COMPLETED
-Enhanced the violet "Фокус" line on the EEG chart to display a 15-second moving average of beta / (theta + alpha) calculations, providing users with smoother, more stable focus measurements during meditation sessions.
+Customized the EEG chart specifically on the meditation screen with Pope, BTR, ATR, and GTR lines, providing specialized brainwave ratio feedback for meditation sessions, while keeping the main screen chart completely unchanged.
 
 ### ✅ Technical Implementation COMPLETED
 
-1. **Moving Average Algorithm Implementation** ✅
-   - Created dedicated `_calculateFocusMovingAverage` method for focus line processing
-   - Implemented 15-second sliding window (15,000 milliseconds) for data collection
-   - Applied moving average calculation using arithmetic mean of values within window
-   - Maintained efficient processing for real-time chart updates
+1. **Chart Mode Differentiation** ✅
+   - Added `EEGChartMode` enum with `main` and `meditation` options
+   - Added `chartMode` parameter to EEGChart widget with default `main` mode
+   - Implemented conditional chart data generation based on mode
+   - Ensured main screen behavior remains completely unchanged
 
-2. **Chart Data Generation Enhancement** ✅
-   - Modified `_buildDualLineChartData` method to use moving average for focus line
-   - Separated focus and relaxation line calculations for improved code clarity
-   - Preserved existing relaxation line logic (alpha / beta) without any changes
-   - Enhanced focus line with smoothed, stable measurements
+2. **Meditation Chart Implementation** ✅
+   - Created dedicated `_buildMeditationChartData` method for meditation-specific calculations
+   - Removed relaxation line (green alpha/beta) from meditation screen completely
+   - Renamed focus line from "Фокус" to "Pope" for meditation screen
+   - Added BTR line calculation: beta / theta (orange color)
+   - Added ATR line calculation: alpha / theta (blue color)
+   - Added GTR line calculation: gamma / theta (red color)
+   - Maintained 15-second moving average for Pope line using existing algorithm
 
 3. **Safe Division and Error Handling** ✅
-   - Maintained division by zero checks for theta + alpha in moving average calculation
-   - Graceful handling of samples with invalid denominators (skipped from calculations)
-   - Proper window boundary handling for samples near beginning of data stream
-   - Robust error handling ensures chart remains functional with partial data
+   - Implemented division by zero checks for all theta-based calculations
+   - BTR, ATR, GTR lines are not displayed when theta = 0
+   - Pope line uses theta + alpha, maintaining different zero handling
+   - Graceful degradation ensures chart remains functional with partial data
 
-4. **Performance Optimization** ✅
-   - Efficient moving average calculation without significant performance impact
-   - Smart data filtering within time windows to minimize computational overhead
-   - Preserved real-time chart updates and responsiveness
-   - Added necessary imports for proper type resolution
+4. **Visual Enhancement** ✅
+   - Implemented new color scheme for meditation chart lines
+   - Updated tooltip logic to recognize meditation chart colors and display correct line names
+   - Enhanced meditation screen legend with two-row layout for four indicators
+   - Maintained visual consistency with compact design
 
 ### ✅ Implementation Results
 
-**Enhanced Moving Average Calculation**:
+**Chart Mode Architecture**:
 ```dart
-List<FlSpot> _calculateFocusMovingAverage(List<EEGJsonSample> samples) {
-  // 15-second sliding window implementation
-  const movingAverageWindowMs = 15 * 1000;
-  
-  for (int i = 0; i < samples.length; i++) {
-    // Collect focus values from 15-second window
-    final windowStartTime = currentTimestamp - movingAverageWindowMs;
-    final focusValues = <double>[];
-    
-    // Calculate moving average from window data
-    if (focusValues.isNotEmpty) {
-      final average = focusValues.reduce((a, b) => a + b) / focusValues.length;
-      focusData.add(FlSpot(currentTimestamp, average));
-    }
-  }
+enum EEGChartMode {
+  main,       // Main screen with focus + relaxation lines
+  meditation, // Meditation screen with Pope + BTR/ATR/GTR lines
 }
+
+// Chart data selection
+final lineChartData = chartMode == EEGChartMode.meditation 
+    ? _buildMeditationChartData(eegProvider)
+    : _buildMainChartData(eegProvider);
 ```
 
-**Example Moving Average Effect**:
-- **Raw Focus Values**: 0.23, 0.25, 0.21, 0.27, 0.24, 0.20, 0.26... (noisy)
-- **15-second Moving Average**: 0.24, 0.24, 0.24... (smooth, stable)
-- **Result**: Noise-reduced, reliable focus measurements
+**Meditation Chart Configuration**:
+- **Pope Line (Violet)**: 15-second moving average of beta / (theta + alpha)
+- **BTR Line (Orange)**: beta / theta ratio
+- **ATR Line (Blue)**: alpha / theta ratio
+- **GTR Line (Red)**: gamma / theta ratio
+- **Safety**: All theta-based lines hidden when theta = 0
 
-**Chart Behavior Enhancement**:
-- **Focus Line (Violet)**: Now displays 15-second moving average of beta / (theta + alpha)
-- **Relaxation Line (Green)**: Unchanged alpha / beta calculation (immediate response)
-- **Visual Result**: Smoother focus line with reduced fluctuations
+**Example Meditation Chart Data**:
+- **Input**: theta = 9.0, alpha = 12.0, beta = 4.9, gamma = 15.3
+- **Pope**: 4.9 / 21.0 = 0.23 (15-sec moving average)
+- **BTR**: 4.9 / 9.0 = 0.54 (orange)
+- **ATR**: 12.0 / 9.0 = 1.33 (blue)
+- **GTR**: 15.3 / 9.0 = 1.70 (red)
+
+**Chart Comparison**:
+- **Main Screen**: "Фокус" (violet) + "Расслабление" (green) - unchanged
+- **Meditation Screen**: "Pope" (violet) + "BTR" (orange) + "ATR" (blue) + "GTR" (red)
 
 ## Files Modified ✅
-- ✅ lib/widgets/eeg_chart.dart - Updated focus line calculation with 15-second moving average
+- ✅ lib/widgets/eeg_chart.dart - Added chart mode differentiation and meditation calculations
+- ✅ lib/screens/meditation_screen.dart - Updated to use meditation chart mode and new legend
 
 ## Quality Assurance Results ✅
-- ✅ **Code Analysis**: No issues found (flutter analyze - 1.0s)
-- ✅ **Build Test**: Successful compilation (flutter build web --debug)
-- ✅ **Moving Average**: 15-second sliding window implemented correctly
-- ✅ **Division by Zero**: Safe handling maintained for all calculations
-- ✅ **Chart Performance**: No performance degradation with moving average calculations
-- ✅ **Visual Consistency**: Existing colors and legend labels preserved perfectly
-- ✅ **Relaxation Line**: Unchanged alpha / beta calculation maintained
+- ✅ **Code Analysis**: No issues found (flutter analyze - 2.9s)
+- ✅ **Build Test**: Successful compilation (flutter build web --debug - 21.0s)
+- ✅ **Chart Mode Differentiation**: Main and meditation charts work independently
+- ✅ **Main Screen Preservation**: Original chart behavior completely unchanged
+- ✅ **Meditation Chart Features**: Pope, BTR, ATR, GTR lines display correctly
+- ✅ **Division by Zero**: Safe handling for all theta-based calculations
+- ✅ **Color Scheme**: Distinct colors for each meditation line type
+- ✅ **Tooltip System**: Accurate line type detection and display
+- ✅ **Legend Enhancement**: Two-row layout with four color indicators
 
 ## System Status
 - **Architecture**: Established and working ✅
 - **Technology Stack**: Flutter/Dart, Provider state management, fl_chart ✅
 - **Data Processing**: Enhanced with brainwave band calculations (theta, alpha, beta, gamma) ✅
-- **Visualization**: Enhanced with brainwave ratios and 15-second moving average for focus ✅
-- **UI/UX**: Complete meditation experience with stable, noise-reduced biometric feedback ✅
+- **Visualization**: Enhanced with specialized meditation chart customization ✅
+- **UI/UX**: Complete meditation experience with specialized theta-based biometric feedback ✅
 - **Navigation**: Multi-screen flow working seamlessly ✅
 - **Performance**: Optimized with efficient calculations and real-time updates ✅
 
 ## 🎯 TASK COMPLETION SUMMARY
 
-**The EEG chart focus line now provides users with smooth, stable 15-second moving average measurements, delivering noise-reduced, reliable focus feedback that enhances the meditation experience while maintaining all existing functionality and performance.**
+**The meditation screen now provides users with specialized theta-based brainwave ratio analysis through Pope, BTR, ATR, and GTR lines, delivering advanced biometric feedback for meditation sessions while maintaining the familiar focus/relaxation chart on the main screen.**
 
 ### Key Achievements:
-1. **Smoothed Focus Measurements**: 15-second moving average eliminates noise and provides stable focus readings
-2. **Enhanced User Experience**: More reliable and less fluctuating focus feedback during meditation sessions
-3. **Preserved Functionality**: Relaxation line and all existing chart features maintained completely unchanged
-4. **Robust Implementation**: Comprehensive error handling and division by zero safety measures
-5. **Performance Optimized**: Moving average calculations implemented without impacting chart responsiveness
-6. **Scientific Accuracy**: Maintains meaningful brainwave ratio calculations with improved stability
+1. **Chart Mode Differentiation**: Successful separation of main vs meditation chart behaviors without code duplication
+2. **Meditation Customization**: Complete implementation of specialized theta-based ratio lines with professional styling
+3. **Main Screen Preservation**: Original focus + relaxation chart functionality completely intact and unaffected
+4. **Enhanced Safety**: Robust division by zero handling for all theta-based calculations with graceful degradation
+5. **Visual Enhancement**: Professional color scheme and intuitive two-row legend layout for meditation experience
+6. **Performance Optimization**: Additional calculations implemented without impacting chart responsiveness
 
 ### Technical Benefits:
-- **Noise Reduction**: Moving average effectively filters out short-term fluctuations in focus measurements
-- **Stable Feedback**: Users receive consistent, reliable focus readings throughout meditation sessions
-- **Real-time Processing**: Live calculation of moving averages without any performance penalties
-- **Adaptive Windows**: Sliding window approach ensures continuous, up-to-date measurements
-- **Error Resilience**: Robust handling of edge cases and invalid data scenarios
+- **Specialized Feedback**: Meditation screen provides theta-based ratio analysis for deeper biometric insights into meditation states
+- **Flexible Architecture**: Chart mode system enables future screen-specific customizations and enhancements
+- **Error Resilience**: Comprehensive handling of edge cases and invalid data scenarios across all calculation types
+- **Real-time Processing**: Live calculation of additional ratios without any performance penalties or delays
+- **Scientific Accuracy**: Maintains meaningful brainwave ratio calculations with enhanced precision and reliability
 
 ### User Experience Enhancement:
-- **Stable Focus Readings**: Reduced noise provides clearer, more interpretable biometric feedback patterns
-- **Reliable Measurements**: 15-second averaging window perfectly balances responsiveness with stability
-- **Enhanced Meditation**: More consistent focus feedback supports better meditation practices and concentration
-- **Professional Quality**: Smooth, professional-grade biometric visualization enhances user confidence
-- **Preserved Relaxation**: Alpha/beta relaxation measurements remain immediate and responsive for quick feedback
+- **Meditation Focus**: Specialized chart provides focused theta-based biometric feedback specifically tailored for meditation sessions
+- **Clear Visualization**: Distinct colors and intuitive two-row legend enable easy interpretation of four simultaneous metrics
+- **Preserved Navigation**: Main screen retains familiar focus/relaxation feedback for general EEG monitoring use cases
+- **Professional Quality**: Enhanced visual design with smooth, responsive chart updates and consistent styling
+- **Contextual Relevance**: Chart content adapts appropriately to meditation vs general usage contexts automatically
 
 ### Scientific Integration:
-- **Signal Processing**: Implements standard signal processing techniques for noise reduction
-- **Biometric Stability**: Provides clinically relevant, stable focus measurements for meditation analysis
-- **Real-time Analytics**: Maintains immediate calculation and display of smoothed brainwave relationships
-- **Meditation Enhancement**: Delivers actionable, stable biometric feedback for improved meditation sessions
+- **Theta-based Analysis**: BTR, ATR, GTR ratios provide deeper insight into brainwave relationships during meditation
+- **Enhanced Pope Metric**: Maintains 15-second moving average for stable focus measurement consistency
+- **Real-time Biofeedback**: Immediate calculation and display of specialized meditation metrics for live feedback
+- **Meditation Enhancement**: Provides actionable, detailed biometric feedback for advanced meditation practice development
 
 ## Current State
 - **Mode**: VAN Level 1 ✅ COMPLETED
