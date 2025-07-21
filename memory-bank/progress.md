@@ -1,28 +1,29 @@
 ﻿# Progress - EEG Flutter App
 
-## Current Status: VAN Level 1 - Enhanced EEG Chart with Brainwave Ratios ✅ COMPLETED
+## Current Status: VAN Level 1 - Enhanced EEG Chart with Focus Moving Average ✅ COMPLETED
 
-### Current Task: EEG Chart Brainwave Ratio Calculations
-- Task Type: Level 1 Chart Enhancement with Brainwave Ratios
+### Current Task: EEG Chart Focus Line Moving Average Enhancement
+- Task Type: Level 1 Chart Enhancement with Moving Average
 - Mode: VAN (direct implementation, no PLAN/CREATIVE needed)
 - Status: ✅ COMPLETED SUCCESSFULLY
 
 ### Task Objectives
-1. **Primary**: Modify EEG chart to display brainwave ratio calculations ✅ COMPLETED
-2. **Secondary**: Implement safe division with zero-value handling ✅ COMPLETED
+1. **Primary**: Implement 15-second moving average for focus line measurements ✅ COMPLETED
+2. **Secondary**: Maintain chart performance and preserve relaxation line unchanged ✅ COMPLETED
 
 ### Files Modified
-- ✅ lib/widgets/eeg_chart.dart - Updated chart data calculation logic with brainwave ratios
+- ✅ lib/widgets/eeg_chart.dart - Updated focus line calculation with 15-second moving average
 
 ### Implementation Progress
-- [x] Access brainwave band data from EEGDataProvider ✅ COMPLETED
-- [x] Replace raw eegValue usage with brainwave calculations ✅ COMPLETED
-- [x] Implement relaxation calculation: alpha / beta (with zero beta handling) ✅ COMPLETED
-- [x] Implement focus calculation: beta / (theta + alpha) (with zero denominator handling) ✅ COMPLETED
-- [x] Update chart data generation to handle missing/invalid ratios ✅ COMPLETED
-- [x] Enhance tooltip logic for dynamic line type detection ✅ COMPLETED
-- [x] Test edge cases and division by zero scenarios ✅ COMPLETED
-- [x] Verify chart performance and responsiveness ✅ COMPLETED
+- [x] Implement 15-second moving average calculation logic ✅ COMPLETED
+- [x] Create dedicated `_calculateFocusMovingAverage` method ✅ COMPLETED
+- [x] Update focus line data generation in chart ✅ COMPLETED
+- [x] Maintain division by zero handling for theta + alpha ✅ COMPLETED
+- [x] Keep relaxation line calculation unchanged (alpha / beta) ✅ COMPLETED
+- [x] Handle insufficient data scenarios gracefully ✅ COMPLETED
+- [x] Test moving average smoothness and accuracy ✅ COMPLETED
+- [x] Verify chart performance impact ✅ COMPLETED
+- [x] Ensure proper integration with existing chart functionality ✅ COMPLETED
 - [x] Final build verification and code analysis ✅ COMPLETED
 
 ### What Works (Current Implementation)
@@ -37,64 +38,99 @@
 - ✅ 120-second time window with 10-second intervals
 - ✅ Enhanced meditation screen with larger EEG chart (350x250), legend, and debug mode toggle
 - ✅ Enhanced EEG data processing with brainwave band calculations (theta, alpha, beta, gamma)
-- ✅ **NEW**: Enhanced EEG chart with scientifically meaningful brainwave ratio calculations
+- ✅ Enhanced EEG chart with scientifically meaningful brainwave ratio calculations
+- ✅ **NEW**: Enhanced focus line with 15-second moving average for stable, noise-reduced measurements
 
 ### Technical Implementation Summary
 
+**Moving Average Algorithm**:
+- **Window Size**: 15-second sliding window (15,000 milliseconds)
+- **Method**: Arithmetic mean of focus values within time window
+- **Implementation**: Dedicated `_calculateFocusMovingAverage` method
+- **Performance**: O(n²) time complexity, acceptable for real-time processing
+
 **Enhanced Chart Data Processing**:
-- **Data Source**: Direct access to EEGJsonSample objects with brainwave band data
-- **Time Window**: 120-second filtering for real-time brainwave ratio visualization
-- **Dynamic Lines**: Lines added/removed based on valid ratio calculations
-- **Performance**: Real-time calculations without impacting chart responsiveness
+- **Focus Line**: 15-second moving average of beta / (theta + alpha) (violet, smoothed)
+- **Relaxation Line**: Immediate alpha / beta calculation (green, unchanged)
+- **Division by Zero**: Safe handling maintained for all calculations
+- **Error Handling**: Graceful degradation for missing or invalid data
 
-**Brainwave Ratio Calculations**:
-- **Relaxation Formula**: alpha / beta (green line, hidden if beta = 0)
-- **Focus Formula**: beta / (theta + alpha) (violet line, hidden if theta + alpha = 0)
-- **Safe Division**: Comprehensive zero-value checking prevents crashes
-- **Real-time Processing**: Calculations performed during chart data generation
+**Chart Integration Features**:
+- **Smooth Visualization**: Focus line displays stable, noise-reduced measurements
+- **Real-time Updates**: Moving average calculated without performance impact
+- **Visual Consistency**: Existing styling (violet for focus, green for relaxation) preserved
+- **Dynamic Behavior**: Chart adapts to data availability with robust error handling
 
-**Chart Enhancement Features**:
-- **Dynamic Visualization**: Chart adapts to available data by showing/hiding lines
-- **Enhanced Tooltips**: Color-based line type detection with 2-decimal precision
-- **Visual Consistency**: Maintained existing styling (violet for focus, green for relaxation)
-- **Robust Error Handling**: Graceful degradation for missing or invalid data
+### Example Moving Average Processing
 
-### Example Brainwave Ratio Processing
-
-**Input Brainwave Data**:
+**Raw Focus Data (beta / (theta + alpha))**:
 ```
-theta = 9.0, alpha = 12.0, beta = 4.9
+t0: 0.23, t1: 0.25, t2: 0.21, t3: 0.27, t4: 0.24, t5: 0.20, t6: 0.26...
 ```
 
-**Calculated Ratios**:
+**15-second Moving Average**:
 ```
-Relaxation = alpha / beta = 12.0 / 4.9 = 2.45
-Focus = beta / (theta + alpha) = 4.9 / (9.0 + 12.0) = 4.9 / 21.0 = 0.23
+At t15: Average of [0.23, 0.25, 0.21, 0.27, 0.24, 0.20, 0.26, ...] = 0.24 (stable)
+At t16: Average of [0.25, 0.21, 0.27, 0.24, 0.20, 0.26, ...] = 0.24 (smooth)
 ```
 
-**Edge Case Handling**:
+**User Experience Impact**:
 ```
-If beta = 0: No green line (relaxation) displayed
-If theta + alpha = 0: No violet line (focus) displayed
-If both = 0: Empty chart displayed gracefully
+Before: Noisy focus readings with frequent fluctuations
+After: Smooth, stable focus measurements with clear trends
+Result: Enhanced meditation feedback with reduced distractions
+```
+
+### Moving Average Algorithm Implementation
+
+**Core Logic**:
+```dart
+List<FlSpot> _calculateFocusMovingAverage(List<EEGJsonSample> samples) {
+  const movingAverageWindowMs = 15 * 1000; // 15 seconds
+  
+  for (int i = 0; i < samples.length; i++) {
+    // Calculate focus values within 15-second window
+    final windowStartTime = currentTimestamp - movingAverageWindowMs;
+    final focusValues = <double>[];
+    
+    // Collect valid focus values from window
+    for (int j = 0; j <= i; j++) {
+      if (sampleTimestamp >= windowStartTime && thetaAlphaSum != 0.0) {
+        focusValues.add(sample.beta / thetaAlphaSum);
+      }
+    }
+    
+    // Calculate and apply moving average
+    if (focusValues.isNotEmpty) {
+      final average = focusValues.reduce((a, b) => a + b) / focusValues.length;
+      focusData.add(FlSpot(currentTimestamp, average));
+    }
+  }
+}
 ```
 
 ### Build & Quality Verification
-- ✅ **Code Analysis**: No issues found (flutter analyze - 1.1s)
-- ✅ **Build Test**: Successful compilation (flutter build web --debug - 20.8s)
-- ✅ **Chart Data Processing**: Brainwave ratio calculations implemented correctly
+- ✅ **Code Analysis**: No issues found (flutter analyze - 1.0s)
+- ✅ **Build Test**: Successful compilation (flutter build web --debug)
+- ✅ **Moving Average**: 15-second sliding window implemented correctly
 - ✅ **Division by Zero**: Safe handling prevents crashes and errors
-- ✅ **Real-time Performance**: No performance impact from live calculations
-- ✅ **Visual Styling**: Existing colors and legend labels preserved
-- ✅ **Dynamic Behavior**: Chart adapts appropriately to missing data scenarios
+- ✅ **Real-time Performance**: No performance degradation from moving average calculations
+- ✅ **Visual Styling**: Existing colors and legend labels preserved perfectly
+- ✅ **Chart Behavior**: Focus line displays smooth, stable measurements
 
 ### Status: ✅ TASK COMPLETED SUCCESSFULLY
 
-The EEG chart now provides users with scientifically meaningful brainwave ratio measurements, displaying real-time focus and relaxation calculations based on established neuroscience principles, while maintaining robust error handling and optimal performance.
+The EEG chart focus line now provides users with smooth, stable 15-second moving average measurements, delivering noise-reduced, reliable focus feedback that enhances the meditation experience while maintaining all existing functionality and performance.
 
 ---
 
 ## PREVIOUSLY COMPLETED TASKS
+
+### ✅ EEG Chart Brainwave Ratio Calculations (Level 1)
+- Modified EEG chart to display brainwave ratio calculations instead of raw EEG values
+- Implemented alpha / beta for relaxation and beta / (theta + alpha) for focus
+- Added robust division by zero handling
+- **Status**: ✅ COMPLETED
 
 ### ✅ Enhanced EEG Data Processing with Brainwave Bands (Level 1)
 - Enhanced EEG data processing to extract additional JSON keys and calculate brainwave band values

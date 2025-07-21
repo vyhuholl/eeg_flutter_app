@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:provider/provider.dart';
 import '../providers/eeg_data_provider.dart';
+import '../models/eeg_data.dart';
 
 /// Y-axis range for adaptive scaling
 class YAxisRange {
@@ -81,19 +82,13 @@ class EEGChart extends StatelessWidget {
     
     if (recentSamples.isEmpty) return [];
     
-    // Calculate brainwave ratios
-    final focusData = <FlSpot>[];
+    // Calculate brainwave ratios and apply moving average to focus
+    final focusData = _calculateFocusMovingAverage(recentSamples);
     final relaxationData = <FlSpot>[];
     
+    // Calculate relaxation line (unchanged)
     for (final sample in recentSamples) {
       final timestamp = sample.absoluteTimestamp.millisecondsSinceEpoch.toDouble();
-      
-      // Focus line: beta / (theta + alpha) (hide if theta + alpha = 0)
-      final thetaAlphaSum = sample.theta + sample.alpha;
-      if (thetaAlphaSum != 0.0) {
-        final focusValue = sample.beta / thetaAlphaSum;
-        focusData.add(FlSpot(timestamp, focusValue));
-      }
       
       // Relaxation line: alpha / beta (hide if beta = 0)
       if (sample.beta != 0.0) {
@@ -131,6 +126,47 @@ class EEGChart extends StatelessWidget {
     }
     
     return lines;
+  }
+
+  /// Calculate 15-second moving average for focus values
+  List<FlSpot> _calculateFocusMovingAverage(List<EEGJsonSample> samples) {
+    final focusData = <FlSpot>[];
+    const movingAverageWindowMs = 15 * 1000; // 15 seconds in milliseconds
+    
+    for (int i = 0; i < samples.length; i++) {
+      final currentSample = samples[i];
+      final currentTimestamp = currentSample.absoluteTimestamp.millisecondsSinceEpoch.toDouble();
+      
+      // Calculate current focus value
+      final thetaAlphaSum = currentSample.theta + currentSample.alpha;
+      if (thetaAlphaSum == 0.0) continue; // Skip if division by zero
+      
+      // Collect focus values from the last 15 seconds
+      final windowStartTime = currentTimestamp - movingAverageWindowMs;
+      final focusValues = <double>[];
+      
+      for (int j = 0; j <= i; j++) {
+        final sample = samples[j];
+        final sampleTimestamp = sample.absoluteTimestamp.millisecondsSinceEpoch.toDouble();
+        
+        // Only include samples within the 15-second window
+        if (sampleTimestamp >= windowStartTime) {
+          final sampleThetaAlphaSum = sample.theta + sample.alpha;
+          if (sampleThetaAlphaSum != 0.0) {
+            final focusValue = sample.beta / sampleThetaAlphaSum;
+            focusValues.add(focusValue);
+          }
+        }
+      }
+      
+      // Calculate moving average if we have enough data
+      if (focusValues.isNotEmpty) {
+        final average = focusValues.reduce((a, b) => a + b) / focusValues.length;
+        focusData.add(FlSpot(currentTimestamp, average));
+      }
+    }
+    
+    return focusData;
   }
 
   /// Calculate adaptive Y-axis range from chart data
