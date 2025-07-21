@@ -82,6 +82,10 @@ class EEGDataProcessor {
         eegValue: filteredEegValue,
         absoluteTimestamp: sample.absoluteTimestamp,
         sequenceNumber: sample.sequenceNumber,
+        theta: sample.theta,
+        alpha: sample.alpha,
+        beta: sample.beta,
+        gamma: sample.gamma,
       ));
     }
     

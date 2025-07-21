@@ -2,18 +2,26 @@ import 'dart:convert';
 import 'dart:async';
 import 'dart:collection';
 
-/// JSON-based EEG sample for new data format
+/// JSON-based EEG sample for new data format with brainwave bands
 class EEGJsonSample {
   final double timeDelta;
   final double eegValue;
   final DateTime absoluteTimestamp;
   final int sequenceNumber;
+  final double theta;
+  final double alpha;
+  final double beta;
+  final double gamma;
 
   const EEGJsonSample({
     required this.timeDelta,
     required this.eegValue,
     required this.absoluteTimestamp,
     required this.sequenceNumber,
+    required this.theta,
+    required this.alpha,
+    required this.beta,
+    required this.gamma,
   });
 
   /// Create from JSON string with time delta processing
@@ -26,7 +34,7 @@ class EEGJsonSample {
     }
   }
 
-  /// Create from JSON map with validation
+  /// Create from JSON map with validation and brainwave band calculations
   factory EEGJsonSample.fromMap(Map<String, dynamic> json, TimeDeltaProcessor processor, int sequenceNumber) {
     // Validate mandatory fields
     if (!json.containsKey('d') || !json.containsKey('E')) {
@@ -41,6 +49,22 @@ class EEGJsonSample {
       throw EEGJsonParseException('Invalid time delta: $timeDelta ms (must be > 0 and <= 5000)');
     }
 
+    // Extract brainwave band components with default values
+    double t1 = _parseDoubleWithDefault(json['t1'], 0.0);
+    double t2 = _parseDoubleWithDefault(json['t2'], 0.0);
+    double a1 = _parseDoubleWithDefault(json['a1'], 0.0);
+    double a2 = _parseDoubleWithDefault(json['a2'], 0.0);
+    double b1 = _parseDoubleWithDefault(json['b1'], 0.0);
+    double b2 = _parseDoubleWithDefault(json['b2'], 0.0);
+    double b3 = _parseDoubleWithDefault(json['b3'], 0.0);
+    double g1 = _parseDoubleWithDefault(json['g1'], 0.0);
+
+    // Calculate brainwave band values
+    double theta = t1 + t2;
+    double alpha = a1 + a2;
+    double beta = b1 + b2 + b3;
+    double gamma = g1;
+
     // Process time delta to absolute timestamp
     final absoluteTimestamp = processor.processDelta(timeDelta);
 
@@ -49,6 +73,10 @@ class EEGJsonSample {
       eegValue: eegValue,
       absoluteTimestamp: absoluteTimestamp,
       sequenceNumber: sequenceNumber,
+      theta: theta,
+      alpha: alpha,
+      beta: beta,
+      gamma: gamma,
     );
   }
 
@@ -65,11 +93,27 @@ class EEGJsonSample {
     }
   }
 
+  /// Helper method to parse double with default value for optional fields
+  static double _parseDoubleWithDefault(dynamic value, double defaultValue) {
+    if (value == null) {
+      return defaultValue;
+    }
+    try {
+      return _parseDouble(value);
+    } catch (e) {
+      return defaultValue;
+    }
+  }
+
 
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       'd': timeDelta,
       'E': eegValue,
+      'theta': theta,
+      'alpha': alpha,
+      'beta': beta,
+      'gamma': gamma,
       'absoluteTimestamp': absoluteTimestamp.millisecondsSinceEpoch,
       'sequenceNumber': sequenceNumber,
     };
@@ -77,7 +121,7 @@ class EEGJsonSample {
 
   @override
   String toString() {
-    return 'EEGJsonSample(timeDelta: ${timeDelta}ms, eegValue: $eegValue, seq: $sequenceNumber)';
+    return 'EEGJsonSample(timeDelta: ${timeDelta}ms, eegValue: $eegValue, theta: $theta, alpha: $alpha, beta: $beta, gamma: $gamma, seq: $sequenceNumber)';
   }
 }
 
@@ -265,7 +309,11 @@ class EEGJsonBuffer {
       timeDelta: 0, 
       eegValue: 0, 
       absoluteTimestamp: DateTime.now(), 
-      sequenceNumber: 0
+      sequenceNumber: 0,
+      theta: 0.0,
+      alpha: 0.0,
+      beta: 0.0,
+      gamma: 0.0,
     ));
 
   void add(EEGJsonSample sample) {

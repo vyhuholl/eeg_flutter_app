@@ -218,6 +218,10 @@ class UDPReceiver {
         eegValue: 0.0, // Neutral value
         absoluteTimestamp: predictedTimestamp,
         sequenceNumber: _sequenceNumber++,
+        theta: 0.0,
+        alpha: 0.0,
+        beta: 0.0,
+        gamma: 0.0,
       );
       
       _jsonDataController.add(fallbackSample);
