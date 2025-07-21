@@ -80,6 +80,9 @@ class ConnectionProvider extends ChangeNotifier {
   /// Whether in error state
   bool get hasError => _currentState.hasError;
   
+  /// Connection start time from UDP receiver
+  DateTime? get connectionStartTime => _udpReceiver.connectionStartTime;
+  
   /// Current connection status message
   String get statusMessage => _currentState.statusMessage;
   

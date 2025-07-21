@@ -55,6 +55,9 @@ class UDPReceiver {
   
   /// Time delta processor for JSON format
   TimeDeltaProcessor get timeDeltaProcessor => _timeDeltaProcessor;
+  
+  /// Connection start time (when connection was established)
+  DateTime? get connectionStartTime => _connectionStartTime;
 
   /// Start receiving UDP data
   Future<void> start(String address, int port) async {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:provider/provider.dart';
 import '../providers/eeg_data_provider.dart';
+import '../providers/connection_provider.dart';
 import '../models/eeg_data.dart';
 
 /// Y-axis range for adaptive scaling
@@ -35,8 +36,8 @@ class EEGChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<EEGDataProvider>(
-      builder: (context, eegProvider, child) {
+    return Consumer2<EEGDataProvider, ConnectionProvider>(
+      builder: (context, eegProvider, connectionProvider, child) {
         return Container(
           height: height,
           decoration: BoxDecoration(
@@ -45,7 +46,7 @@ class EEGChart extends StatelessWidget {
           ),
           padding: const EdgeInsets.all(16),
           child: LineChart(
-            _buildLineChartData(eegProvider),
+            _buildLineChartData(eegProvider, connectionProvider),
             duration: const Duration(milliseconds: 150),
             curve: Curves.linear,
           ),
@@ -54,10 +55,10 @@ class EEGChart extends StatelessWidget {
     );
   }
 
-  LineChartData _buildLineChartData(EEGDataProvider eegProvider) {
+  LineChartData _buildLineChartData(EEGDataProvider eegProvider, ConnectionProvider connectionProvider) {
     final lineChartData = chartMode == EEGChartMode.meditation 
-        ? _buildMeditationChartData(eegProvider)
-        : _buildMainChartData(eegProvider);
+        ? _buildMeditationChartData(eegProvider, connectionProvider)
+        : _buildMainChartData(eegProvider, connectionProvider);
     
     if (lineChartData.isEmpty) {
       return _buildEmptyChart();
@@ -80,30 +81,37 @@ class EEGChart extends StatelessWidget {
   }
 
   /// Build main screen chart data for Focus and Relaxation using brainwave ratios
-  List<LineChartBarData> _buildMainChartData(EEGDataProvider eegProvider) {
+  List<LineChartBarData> _buildMainChartData(EEGDataProvider eegProvider, ConnectionProvider connectionProvider) {
     final jsonSamples = eegProvider.dataProcessor.getLatestJsonSamples();
+    final connectionStartTime = connectionProvider.connectionStartTime;
     
-    if (jsonSamples.isEmpty) return [];
+    if (jsonSamples.isEmpty || connectionStartTime == null) return [];
     
-    // Filter to last 120 seconds
-    final cutoffTime = DateTime.now().millisecondsSinceEpoch - (120 * 1000);
+    // Filter to show last 120 seconds of data, or all data since connection if less than 120 seconds
+    final now = DateTime.now();
+    final timeSinceConnection = now.difference(connectionStartTime).inSeconds;
+    
+    final cutoffTime = timeSinceConnection > 120 
+        ? now.millisecondsSinceEpoch - (120 * 1000)  // Show last 120 seconds
+        : connectionStartTime.millisecondsSinceEpoch; // Show all data since connection
+        
     final recentSamples = jsonSamples.where((sample) => 
       sample.absoluteTimestamp.millisecondsSinceEpoch >= cutoffTime).toList();
     
     if (recentSamples.isEmpty) return [];
     
     // Calculate brainwave ratios and apply moving average to focus
-    final focusData = _calculateFocusMovingAverage(recentSamples);
+    final focusData = _calculateFocusMovingAverage(recentSamples, connectionStartTime);
     final relaxationData = <FlSpot>[];
     
-    // Calculate relaxation line (unchanged)
+    // Calculate relaxation line using relative time
     for (final sample in recentSamples) {
-      final timestamp = sample.absoluteTimestamp.millisecondsSinceEpoch.toDouble();
+      final relativeTimeSeconds = sample.absoluteTimestamp.difference(connectionStartTime).inSeconds.toDouble();
       
       // Relaxation line: alpha / beta (hide if beta = 0)
       if (sample.beta != 0.0) {
         final relaxationValue = sample.alpha / sample.beta;
-        relaxationData.add(FlSpot(timestamp, relaxationValue));
+        relaxationData.add(FlSpot(relativeTimeSeconds, relaxationValue));
       }
     }
     
@@ -138,14 +146,15 @@ class EEGChart extends StatelessWidget {
     return lines;
   }
 
-  /// Calculate 10-second moving average for focus values
-  List<FlSpot> _calculateFocusMovingAverage(List<EEGJsonSample> samples) {
+  /// Calculate 10-second moving average for focus values using relative time
+  List<FlSpot> _calculateFocusMovingAverage(List<EEGJsonSample> samples, DateTime connectionStartTime) {
     final focusData = <FlSpot>[];
     const movingAverageWindowMs = 10 * 1000; // 10 seconds in milliseconds
     
     for (int i = 0; i < samples.length; i++) {
       final currentSample = samples[i];
       final currentTimestamp = currentSample.absoluteTimestamp.millisecondsSinceEpoch.toDouble();
+      final relativeTimeSeconds = currentSample.absoluteTimestamp.difference(connectionStartTime).inSeconds.toDouble();
       
       // Calculate current focus value
       final thetaAlphaSum = currentSample.theta + currentSample.alpha;
@@ -172,7 +181,7 @@ class EEGChart extends StatelessWidget {
       // Calculate moving average if we have enough data
       if (focusValues.isNotEmpty) {
         final average = focusValues.reduce((a, b) => a + b) / focusValues.length;
-        focusData.add(FlSpot(currentTimestamp, average));
+        focusData.add(FlSpot(relativeTimeSeconds, average));
       }
     }
     
@@ -180,41 +189,48 @@ class EEGChart extends StatelessWidget {
   }
 
   /// Build meditation screen chart data with Pope, BTR, ATR, GTR lines
-  List<LineChartBarData> _buildMeditationChartData(EEGDataProvider eegProvider) {
+  List<LineChartBarData> _buildMeditationChartData(EEGDataProvider eegProvider, ConnectionProvider connectionProvider) {
     final jsonSamples = eegProvider.dataProcessor.getLatestJsonSamples();
+    final connectionStartTime = connectionProvider.connectionStartTime;
     
-    if (jsonSamples.isEmpty) return [];
+    if (jsonSamples.isEmpty || connectionStartTime == null) return [];
     
-    // Filter to last 120 seconds
-    final cutoffTime = DateTime.now().millisecondsSinceEpoch - (120 * 1000);
+    // Filter to show last 120 seconds of data, or all data since connection if less than 120 seconds
+    final now = DateTime.now();
+    final timeSinceConnection = now.difference(connectionStartTime).inSeconds;
+    
+    final cutoffTime = timeSinceConnection > 120 
+        ? now.millisecondsSinceEpoch - (120 * 1000)  // Show last 120 seconds
+        : connectionStartTime.millisecondsSinceEpoch; // Show all data since connection
+        
     final recentSamples = jsonSamples.where((sample) => 
       sample.absoluteTimestamp.millisecondsSinceEpoch >= cutoffTime).toList();
     
     if (recentSamples.isEmpty) return [];
     
     // Calculate meditation-specific lines
-    final popeData = _calculateFocusMovingAverage(recentSamples); // Reuse for Pope line
+    final popeData = _calculateFocusMovingAverage(recentSamples, connectionStartTime); // Reuse for Pope line
     final btrData = <FlSpot>[];
     final atrData = <FlSpot>[];
     final gtrData = <FlSpot>[];
     
-    // Calculate BTR, ATR, GTR lines (theta-based ratios)
+    // Calculate BTR, ATR, GTR lines (theta-based ratios) using relative time
     for (final sample in recentSamples) {
-      final timestamp = sample.absoluteTimestamp.millisecondsSinceEpoch.toDouble();
+      final relativeTimeSeconds = sample.absoluteTimestamp.difference(connectionStartTime).inSeconds.toDouble();
       
       // Only calculate if theta is not zero
       if (sample.theta != 0.0) {
         // BTR line: beta / theta
         final btrValue = sample.beta / sample.theta;
-        btrData.add(FlSpot(timestamp, btrValue));
+        btrData.add(FlSpot(relativeTimeSeconds, btrValue));
         
         // ATR line: alpha / theta
         final atrValue = sample.alpha / sample.theta;
-        atrData.add(FlSpot(timestamp, atrValue));
+        atrData.add(FlSpot(relativeTimeSeconds, atrValue));
         
         // GTR line: gamma / theta
         final gtrValue = sample.gamma / sample.theta;
-        gtrData.add(FlSpot(timestamp, gtrValue));
+        gtrData.add(FlSpot(relativeTimeSeconds, gtrValue));
       }
     }
     
@@ -342,30 +358,18 @@ class EEGChart extends StatelessWidget {
         sideTitles: SideTitles(
           showTitles: true,
           reservedSize: 30,
-          interval: 10000, // 10 seconds (10000ms)
+          interval: 10, // 10 seconds (now using relative time in seconds)
           getTitlesWidget: (value, meta) {
-            final date = DateTime.fromMillisecondsSinceEpoch(value.toInt());
-            final seconds = date.minute * 60 + date.second;
+            final seconds = value.toInt();
             
-            // Show relative time in seconds ago
-            if (seconds <= 120) {
-              return Text(
-                '${seconds}s',
-                style: const TextStyle(
-                  fontSize: 10,
-                  color: Color(0xFF8E8E93), // Light grey
-                ),
-              );
-            } else {
-              // For times older than 120 seconds, show absolute seconds
-              return Text(
-                '${seconds - 120}s',
-                style: const TextStyle(
-                  fontSize: 10,
-                  color: Color(0xFF8E8E93), // Light grey
-                ),
-              );
-            }
+            // Show relative time in seconds since connection
+            return Text(
+              '${seconds}s',
+              style: const TextStyle(
+                fontSize: 10,
+                color: Color(0xFF8E8E93), // Light grey
+              ),
+            );
           },
         ),
       ),
@@ -380,7 +384,7 @@ class EEGChart extends StatelessWidget {
       drawHorizontalLine: true,
       drawVerticalLine: true,
       horizontalInterval: 25,
-      verticalInterval: 10000, // 10 seconds (10000ms)
+      verticalInterval: 10, // 10 seconds (now using relative time in seconds)
       getDrawingHorizontalLine: _getDrawingHorizontalLine,
       getDrawingVerticalLine: _getDrawingVerticalLine,
     );
@@ -418,8 +422,8 @@ class EEGChart extends StatelessWidget {
         tooltipBgColor: const Color(0xFF2C2C2E),
                   getTooltipItems: (touchedSpots) {
             return touchedSpots.map((spot) {
-              final date = DateTime.fromMillisecondsSinceEpoch(spot.x.toInt());
-              final timeStr = '${date.second}.${(date.millisecond / 100).floor()}s';
+              final seconds = spot.x.toInt();
+              final timeStr = '${seconds}s';
               
               // Determine line type based on color and chart mode
               String lineType;

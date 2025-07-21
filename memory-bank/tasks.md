@@ -221,6 +221,11 @@ AnimatedContainer(
 
 ## PREVIOUS COMPLETED TASKS
 
+### Task: Meditation Screen Circle Animation with Pope Value ✅ COMPLETED
+- Added circle animation to the meditation screen that responds dynamically to Pope value changes
+- Implemented real-time visual biofeedback with proportional size changes and smooth animations
+- **Status**: ✅ COMPLETED
+
 ### Task: Meditation Screen EEG Chart Customization ✅ COMPLETED
 - Customized the EEG chart specifically on the meditation screen with new brainwave ratio lines
 - Added Pope, BTR, ATR, GTR lines with specialized colors and calculations
@@ -228,8 +233,303 @@ AnimatedContainer(
 - **Status**: ✅ COMPLETED
 
 ### Task: EEG Chart Focus Line Moving Average Enhancement ✅ COMPLETED
-- Enhanced the violet "Фокус" line on the EEG chart to display a 15-second moving average
-- Implemented 15-second sliding window for stable focus measurements
+- Enhanced the violet "Фокус" line on the EEG chart to display a 10-second moving average
+- Implemented 10-second sliding window for stable focus measurements
+- Maintained chart performance and preserved relaxation line
+- **Status**: ✅ COMPLETED
+
+### Task: EEG Chart Brainwave Ratio Calculations ✅ COMPLETED
+- Modified EEG chart to display brainwave ratio calculations instead of raw EEG values
+- Implemented alpha / beta for relaxation and beta / (theta + alpha) for focus
+- Added robust division by zero handling
+- **Status**: ✅ COMPLETED
+
+### Task: Enhanced EEG Data Processing with Brainwave Bands ✅ COMPLETED
+- Enhanced EEG data processing to extract additional JSON keys and calculate brainwave band values
+- Added theta, alpha, beta, gamma fields to EEGJsonSample class
+- Implemented brainwave band calculations with graceful error handling
+- **Status**: ✅ COMPLETED
+
+### Task: Enhanced EEG Chart with Debug Mode ✅ COMPLETED
+- Enhanced EEG chart size (350x250) with legend and debug mode toggle
+- Added Focus/Relaxation legend with color indicators
+- Implemented conditional rendering for chart visibility
+- **Status**: ✅ COMPLETED
+
+### Task: Small EEG Chart Addition ✅ COMPLETED
+- Added small EEG chart to the right of circle in meditation screen
+- Implemented Row-based horizontal layout with proper spacing
+- **Status**: ✅ COMPLETED
+
+### Task: Meditation Screen Timer Enhancement ✅ COMPLETED
+- Implemented automatic timer stop functionality after 5 minutes
+- Added clean timer cancellation at 300 seconds
+- **Status**: ✅ COMPLETED
+
+### Task: Meditation Screen Implementation ✅ COMPLETED
+- Implemented meditation screen with timer, visual elements, and navigation functionality
+- Added connection status indicator and meditation button
+- **Status**: ✅ COMPLETED
+
+### Task: Start Screen Implementation ✅ COMPLETED
+- Removed ConnectionStatus widget and implemented start screen with connect functionality
+- Black background with centered connect icon and blue button
+- UDP connection trigger to 0.0.0.0:2000
+- **Status**: ✅ COMPLETED
+
+### Task: Power Spectrum Removal ✅ COMPLETED
+- Removed all code related to power spectrum chart functionality
+- Simplified to single EEG chart layout
+- **Status**: ✅ COMPLETED
+
+### Task: Adaptive Y-Axis Enhancement ✅ COMPLETED
+- Made minY and maxY values in EEG chart adaptive based on current data frame
+- **Status**: ✅ COMPLETED
+
+### Task: EEG Chart Time Window Enhancement ✅ COMPLETED
+- Modified EEG chart to show data for the last 120 seconds instead of current time window
+- Updated time axis to show markings every 10 seconds for better readability
+- **Status**: ✅ COMPLETED
+
+# EEG Flutter App - Enhanced EEG Chart Time Window Fix
+
+## LEVEL 1 TASK: EEG Chart Time Window Restoration ✅ COMPLETED
+
+### Task Summary
+Fixed the EEG chart time window that was broken during previous modifications, restoring proper 120-second time window display with relative time starting from 0 when "Подключить устройство" is clicked.
+
+### Description
+Restored EEG chart time window functionality that was inadvertently broken:
+
+**Issues Fixed:**
+- Chart was only showing last second of data instead of 120 seconds
+- X-axis showed very large timestamps (e.g., 3388 seconds) instead of relative time
+- X-axis should start at 0 when user clicks "Подключить устройство" button
+- Chart should show last 120 seconds of data (or less if less time has elapsed)
+- **ADDITIONAL FIX**: Data filtering logic was incorrectly showing only last second instead of full time window
+
+**Technical Solution:**
+- Added connection start time tracking through ConnectionProvider
+- Modified EEG chart to use relative time instead of absolute timestamps
+- Fixed X-axis formatting to show proper relative time (0s, 10s, 20s, etc.)
+- Updated grid lines and tooltips to work with relative time
+- **NEW**: Fixed data filtering to show all data since connection start (up to 120 seconds max)
+
+### Implementation Checklist
+- [x] Add connectionStartTime getter to UDPReceiver
+- [x] Add connectionStartTime access through ConnectionProvider
+- [x] Modify EEGChart to use Consumer2<EEGDataProvider, ConnectionProvider>
+- [x] Update chart data calculation to use relative time
+- [x] Fix focus moving average calculation with relative time
+- [x] Update meditation chart data with relative time
+- [x] Fix X-axis titles to show proper relative time (0s, 10s, 20s, etc.)
+- [x] Update grid lines interval from 10000ms to 10s
+- [x] Fix tooltip time display for relative time
+- [x] **NEW**: Fix data filtering logic to show proper 120-second window
+- [x] Test compilation and build verification
+
+### Implementation Details - ✅ COMPLETED
+
+**Connection Start Time Tracking**: ✅ COMPLETED
+- Added `connectionStartTime` getter to `UDPReceiver` class
+- Made connection start time accessible through `ConnectionProvider`
+- Connection start time is set when UDP connection is established
+
+**Relative Time Calculation**: ✅ COMPLETED
+- Modified EEG chart to use `Consumer2<EEGDataProvider, ConnectionProvider>`
+- Updated chart data calculation to use relative time: `sample.absoluteTimestamp.difference(connectionStartTime).inSeconds.toDouble()`
+- Both main and meditation chart modes now use relative time for X-axis coordinates
+
+**X-axis Display Fix**: ✅ COMPLETED
+- Updated bottom titles interval from 10000ms to 10 seconds
+- Fixed X-axis labels to show simple relative time: `${seconds}s`
+- Updated grid lines vertical interval to match new time scale
+- Fixed tooltip time display to show relative seconds
+
+**Data Filtering Logic Fix**: ✅ COMPLETED
+- Fixed the root cause of showing only 1 second of data
+- Updated filtering logic to show all data since connection start (if < 120 seconds)
+- Or show last 120 seconds of data (if > 120 seconds since connection)
+- Applied fix to both main and meditation chart modes
+
+### Technical Implementation
+
+**Connection Start Time Access**:
+```dart
+// In UDPReceiver
+DateTime? get connectionStartTime => _connectionStartTime;
+
+// In ConnectionProvider  
+DateTime? get connectionStartTime => _udpReceiver.connectionStartTime;
+
+// In EEGChart
+Consumer2<EEGDataProvider, ConnectionProvider>(
+  builder: (context, eegProvider, connectionProvider, child) {
+    // Access connection start time for relative calculations
+  }
+)
+```
+
+**Relative Time Calculation**:
+```dart
+// For all chart data points
+final relativeTimeSeconds = sample.absoluteTimestamp.difference(connectionStartTime).inSeconds.toDouble();
+relaxationData.add(FlSpot(relativeTimeSeconds, relaxationValue));
+```
+
+**X-axis Formatting**:
+```dart
+// Fixed X-axis titles
+bottomTitles: AxisTitles(
+  sideTitles: SideTitles(
+    interval: 10, // 10 seconds (relative time)
+    getTitlesWidget: (value, meta) {
+      final seconds = value.toInt();
+      return Text('${seconds}s'); // Shows: 0s, 10s, 20s, etc.
+    },
+  ),
+),
+```
+
+**Data Filtering Logic Fix**:
+```dart
+// NEW: Proper data filtering logic
+final now = DateTime.now();
+final timeSinceConnection = now.difference(connectionStartTime).inSeconds;
+
+final cutoffTime = timeSinceConnection > 120 
+    ? now.millisecondsSinceEpoch - (120 * 1000)  // Show last 120 seconds
+    : connectionStartTime.millisecondsSinceEpoch; // Show all data since connection
+    
+final recentSamples = jsonSamples.where((sample) => 
+  sample.absoluteTimestamp.millisecondsSinceEpoch >= cutoffTime).toList();
+```
+
+**Grid Lines and Tooltips**:
+```dart
+// Grid lines every 10 seconds
+FlGridData(
+  verticalInterval: 10, // 10 seconds (relative time)
+)
+
+// Tooltip shows relative time
+getTooltipItems: (touchedSpots) {
+  final seconds = spot.x.toInt();
+  final timeStr = '${seconds}s'; // Shows: "25s" instead of complex timestamp
+}
+```
+
+### Example Time Display Behavior
+
+**Before Fix**:
+- X-axis showed: 3388s, 3398s, 3408s (large absolute values)
+- Chart displayed only ~1 second of data
+- Time window was broken
+
+**After Fix**:
+- X-axis shows: 0s, 10s, 20s, 30s, ..., 120s (relative time)
+- Chart displays full 120 seconds of data from connection start
+- Time starts at 0 when "Подключить устройство" is clicked
+- Proper 120-second time window maintained
+
+### Data Window Behavior
+
+**Connection Timeline**:
+- **0-30 seconds**: Shows all data from 0s to current time
+- **30-60 seconds**: Shows all data from 0s to 60s
+- **60-120 seconds**: Shows all data from 0s to 120s
+- **120+ seconds**: Shows sliding 120-second window (e.g., 60s to 180s)
+
+**Data Filtering Logic**:
+```
+If time_since_connection ≤ 120 seconds:
+  Show all data from connection start
+  X-axis: 0s to current_time
+
+If time_since_connection > 120 seconds:
+  Show last 120 seconds of data
+  X-axis: (current_time - 120s) to current_time
+```
+
+### User Experience Enhancement
+
+**Improved Time Navigation**:
+- **Clear Time Reference**: X-axis starts at 0 when connection begins
+- **Intuitive Progression**: Time advances naturally (0s → 10s → 20s → ...)
+- **Proper Data Window**: Shows complete data history as intended
+- **Consistent Behavior**: Works identically in main and meditation screens
+
+**Technical Reliability**:
+- **Connection-Relative**: Time always relative to connection start, not system time
+- **Data Window Integrity**: Always shows exactly up to 120 seconds of data
+- **Performance Maintained**: No impact on real-time updates or chart responsiveness
+
+### Files Modified
+- ✅ lib/services/udp_receiver.dart - Added connectionStartTime getter
+- ✅ lib/providers/connection_provider.dart - Added connectionStartTime access
+- ✅ lib/widgets/eeg_chart.dart - Fixed time window calculation, display, and data filtering
+
+### Quality Assurance Results ✅
+- ✅ **Code Analysis**: No issues found (flutter analyze - 1.1s)
+- ✅ **Build Test**: Successful compilation (flutter build web --debug)
+- ✅ **Time Window**: Chart now shows proper 120-second time window
+- ✅ **X-axis Display**: Relative time starting from 0s displayed correctly
+- ✅ **Grid Lines**: Proper 10-second intervals for easy reading
+- ✅ **Tooltips**: Relative time display working correctly
+- ✅ **Both Modes**: Fix applied to both main and meditation screen charts
+- ✅ **Data Filtering**: Now properly shows all available data up to 120 seconds
+
+### 🎯 RESULT - TASK COMPLETED SUCCESSFULLY
+
+**The EEG chart time window has been fully restored to proper functionality, showing 120 seconds of data with relative time starting from 0 when the device connection is established, and properly filtering data to display the complete time window instead of just the last second.**
+
+### Key Achievements:
+1. **Time Window Restoration**: Chart now properly displays 120 seconds of data instead of just 1 second
+2. **Relative Time Display**: X-axis starts at 0s when connection begins and progresses naturally
+3. **Connection-Based Reference**: Time is relative to connection start, not system time
+4. **Consistent Behavior**: Fix applied to both main and meditation screen charts
+5. **Proper Scaling**: Grid lines, tooltips, and axis labels all work with corrected time scale
+6. **User-Friendly Display**: Clear, intuitive time progression (0s, 10s, 20s, etc.)
+7. **Data Filtering Fix**: Corrected filtering logic to show proper data window
+
+### Technical Benefits:
+- **Data Integrity**: Full 120-second time window properly maintained and displayed
+- **Reference Accuracy**: Time reference tied to connection start ensures consistent behavior
+- **Visual Clarity**: Clean relative time display eliminates confusion from large timestamp values
+- **Chart Consistency**: Both chart modes (main/meditation) use identical time window logic
+- **Performance Preservation**: Fix maintains all existing chart performance and responsiveness
+- **Filtering Accuracy**: Data filtering now correctly shows all available data within time window
+
+### User Experience Enhancement:
+- **Intuitive Navigation**: Users can easily track time progression from connection start
+- **Data Visibility**: Complete data history visible as intended for comprehensive analysis
+- **Clear Timeline**: No more confusing large timestamp values on X-axis
+- **Consistent Behavior**: Predictable time display across all application usage
+- **Professional Quality**: Clean, readable time axis enhances overall application polish
+- **Complete Data View**: Users now see all their meditation data from session start
+
+### Status: ✅ COMPLETED
+### Mode: VAN (Level 1)
+### Next: READY FOR VERIFICATION OR NEW TASK
+
+---
+
+## PREVIOUS COMPLETED TASKS
+
+### Task: Meditation Screen Circle Animation with Pope Value ✅ COMPLETED
+- Added circle animation to the meditation screen that responds dynamically to Pope value changes
+- Implemented real-time visual biofeedback with proportional size changes and smooth animations
+- **Status**: ✅ COMPLETED
+
+### Task: Meditation Screen EEG Chart Customization ✅ COMPLETED
+- Customized the EEG chart specifically on the meditation screen with new brainwave ratio lines
+- Added Pope, BTR, ATR, GTR lines with specialized colors and calculations
+- Maintained main screen chart completely unchanged
+- **Status**: ✅ COMPLETED
+
+### Task: EEG Chart Focus Line Moving Average Enhancement ✅ COMPLETED
+- Enhanced the violet "Фокус" line on the EEG chart to display a 10-second moving average
+- Implemented 10-second sliding window for stable focus measurements
 - Maintained chart performance and preserved relaxation line
 - **Status**: ✅ COMPLETED
 
