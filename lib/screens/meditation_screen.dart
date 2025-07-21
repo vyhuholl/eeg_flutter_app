@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../widgets/eeg_chart.dart';
 
 /// Meditation screen with timer and visual elements
 class MeditationScreen extends StatefulWidget {
@@ -12,6 +13,9 @@ class MeditationScreen extends StatefulWidget {
 class _MeditationScreenState extends State<MeditationScreen> {
   late Timer _timer;
   int _seconds = 0;
+  
+  // Debug mode to control EEG chart visibility
+  bool isDebugModeOn = true;
 
   @override
   void initState() {
@@ -49,6 +53,102 @@ class _MeditationScreenState extends State<MeditationScreen> {
     Navigator.of(context).popUntil((route) => route.isFirst);
   }
 
+  Widget _buildLegend() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: [
+        // Focus legend item
+        Row(
+          children: [
+            Container(
+              width: 16,
+              height: 3,
+              color: const Color(0xFFBF5AF2), // Violet
+            ),
+            const SizedBox(width: 8),
+            const Text(
+              'Фокус',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+        // Relaxation legend item
+        Row(
+          children: [
+            Container(
+              width: 16,
+              height: 3,
+              color: const Color(0xFF32D74B), // Green
+            ),
+            const SizedBox(width: 8),
+            const Text(
+              'Расслабление',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCenterContent() {
+    if (isDebugModeOn) {
+      // Debug mode: show circle + enhanced EEG chart side by side
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // Circle image on the left
+          Image.asset(
+            'assets/circle.png',
+            width: 280,
+            height: 280,
+            fit: BoxFit.contain,
+          ),
+          
+          // Enhanced EEG chart with legend on the right
+          Column(
+            children: [
+              // EEG chart - bigger and wider
+              const SizedBox(
+                width: 350,
+                child: EEGChart(
+                  height: 250,
+                  showGridLines: true,
+                  showAxes: false,
+                ),
+              ),
+              
+              const SizedBox(height: 8),
+              
+              // Legend below the chart
+              SizedBox(
+                width: 350,
+                child: _buildLegend(),
+              ),
+            ],
+          ),
+        ],
+      );
+    } else {
+      // Normal mode: show only centered circle
+      return Center(
+        child: Image.asset(
+          'assets/circle.png',
+          width: 400,
+          height: 400,
+          fit: BoxFit.contain,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -84,15 +184,8 @@ class _MeditationScreenState extends State<MeditationScreen> {
               
               const Spacer(flex: 2),
               
-              // Circle image at center
-              Center(
-                child: Image.asset(
-                  'assets/circle.png',
-                  width: 400,
-                  height: 400,
-                  fit: BoxFit.contain,
-                ),
-              ),
+              // Center content - conditional rendering based on debug mode
+              _buildCenterContent(),
               
               const Spacer(flex: 2),
               
