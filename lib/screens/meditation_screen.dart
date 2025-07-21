@@ -29,6 +29,10 @@ class _MeditationScreenState extends State<MeditationScreen> {
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       setState(() {
         _seconds++;
+        // Stop timer after 5 minutes (300 seconds)
+        if (_seconds >= 300) {
+          _timer.cancel();
+        }
       });
     });
   }
