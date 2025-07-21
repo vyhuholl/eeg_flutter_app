@@ -68,20 +68,45 @@ class EEGChart extends StatelessWidget {
     );
   }
 
-  /// Build dual line chart data for Focus and Relaxation
+  /// Build dual line chart data for Focus and Relaxation using brainwave ratios
   List<LineChartBarData> _buildDualLineChartData(EEGDataProvider eegProvider) {
-    final eegData = eegProvider.dataProcessor.eegTimeSeriesData;
+    final jsonSamples = eegProvider.dataProcessor.getLatestJsonSamples();
     
-    if (eegData.isEmpty) return [];
+    if (jsonSamples.isEmpty) return [];
     
-    // For demonstration, we'll create two lines from the same data
-    // In a real implementation, you would have separate Focus and Relaxation data
-    final focusData = eegData.map((spot) => FlSpot(spot.x, spot.y)).toList();
-    final relaxationData = eegData.map((spot) => FlSpot(spot.x, spot.y * 0.8 + 100)).toList(); // Offset for visual distinction
+    // Filter to last 120 seconds
+    final cutoffTime = DateTime.now().millisecondsSinceEpoch - (120 * 1000);
+    final recentSamples = jsonSamples.where((sample) => 
+      sample.absoluteTimestamp.millisecondsSinceEpoch >= cutoffTime).toList();
     
-    return [
-      // Focus line (violet)
-      LineChartBarData(
+    if (recentSamples.isEmpty) return [];
+    
+    // Calculate brainwave ratios
+    final focusData = <FlSpot>[];
+    final relaxationData = <FlSpot>[];
+    
+    for (final sample in recentSamples) {
+      final timestamp = sample.absoluteTimestamp.millisecondsSinceEpoch.toDouble();
+      
+      // Focus line: beta / (theta + alpha) (hide if theta + alpha = 0)
+      final thetaAlphaSum = sample.theta + sample.alpha;
+      if (thetaAlphaSum != 0.0) {
+        final focusValue = sample.beta / thetaAlphaSum;
+        focusData.add(FlSpot(timestamp, focusValue));
+      }
+      
+      // Relaxation line: alpha / beta (hide if beta = 0)
+      if (sample.beta != 0.0) {
+        final relaxationValue = sample.alpha / sample.beta;
+        relaxationData.add(FlSpot(timestamp, relaxationValue));
+      }
+    }
+    
+    final lines = <LineChartBarData>[];
+    
+    // Add focus line (violet) if we have data
+    if (focusData.isNotEmpty) {
+      lines.add(LineChartBarData(
         spots: focusData,
         isCurved: false,
         color: const Color(0xFFBF5AF2), // Violet
@@ -89,9 +114,12 @@ class EEGChart extends StatelessWidget {
         isStrokeCapRound: false,
         dotData: const FlDotData(show: false),
         belowBarData: BarAreaData(show: false),
-      ),
-      // Relaxation line (green)
-      LineChartBarData(
+      ));
+    }
+    
+    // Add relaxation line (green) if we have data
+    if (relaxationData.isNotEmpty) {
+      lines.add(LineChartBarData(
         spots: relaxationData,
         isCurved: false,
         color: const Color(0xFF32D74B), // Green
@@ -99,8 +127,10 @@ class EEGChart extends StatelessWidget {
         isStrokeCapRound: false,
         dotData: const FlDotData(show: false),
         belowBarData: BarAreaData(show: false),
-      ),
-    ];
+      ));
+    }
+    
+    return lines;
   }
 
   /// Calculate adaptive Y-axis range from chart data
@@ -248,9 +278,19 @@ class EEGChart extends StatelessWidget {
           return touchedSpots.map((spot) {
             final date = DateTime.fromMillisecondsSinceEpoch(spot.x.toInt());
             final timeStr = '${date.second}.${(date.millisecond / 100).floor()}s';
-            final lineType = spot.barIndex == 0 ? 'Фокус' : 'Расслабление';
+            
+            // Determine line type based on color since line indices can vary
+            String lineType;
+            if (spot.bar.color == const Color(0xFFBF5AF2)) {
+              lineType = 'Фокус';
+            } else if (spot.bar.color == const Color(0xFF32D74B)) {
+              lineType = 'Расслабление';
+            } else {
+              lineType = 'Неизвестно';
+            }
+            
             return LineTooltipItem(
-              '$lineType: ${spot.y.toStringAsFixed(1)}\nВремя: $timeStr',
+              '$lineType: ${spot.y.toStringAsFixed(2)}\nВремя: $timeStr',
               const TextStyle(
                 color: Colors.white,
                 fontSize: 12,
