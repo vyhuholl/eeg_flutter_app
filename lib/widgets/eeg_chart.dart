@@ -118,9 +118,9 @@ class EEGChart extends StatelessWidget {
     final focusData = _calculateFocusMovingAverage(recentSamples, connectionStartTime);
     final relaxationData = <FlSpot>[];
     
-    // Calculate relaxation line using relative time
+    // Calculate relaxation line using relative time with fractional seconds
     for (final sample in recentSamples) {
-      final relativeTimeSeconds = sample.absoluteTimestamp.difference(connectionStartTime).inSeconds.toDouble();
+      final relativeTimeSeconds = sample.absoluteTimestamp.difference(connectionStartTime).inMilliseconds.toDouble() / 1000.0;
       
       // Relaxation line: alpha / beta (hide if beta = 0)
       relaxationData.add(FlSpot(relativeTimeSeconds, sample.rab));
@@ -165,7 +165,7 @@ class EEGChart extends StatelessWidget {
     for (int i = 0; i < samples.length; i++) {
       final currentSample = samples[i];
       final currentTimestamp = currentSample.absoluteTimestamp.millisecondsSinceEpoch.toDouble();
-      final relativeTimeSeconds = currentSample.absoluteTimestamp.difference(connectionStartTime).inSeconds.toDouble();
+      final relativeTimeSeconds = currentSample.absoluteTimestamp.difference(connectionStartTime).inMilliseconds.toDouble() / 1000.0;
       
       // Calculate current focus value
       if (currentSample.pope == 0.0) continue; // Skip if division by zero
@@ -222,9 +222,9 @@ class EEGChart extends StatelessWidget {
     final atrData = <FlSpot>[];
     final gtrData = <FlSpot>[];
     
-    // Calculate BTR, ATR, GTR lines (theta-based ratios) using relative time
+    // Calculate BTR, ATR, GTR lines (theta-based ratios) using relative time with fractional seconds
     for (final sample in recentSamples) {
-      final relativeTimeSeconds = sample.absoluteTimestamp.difference(connectionStartTime).inSeconds.toDouble();
+      final relativeTimeSeconds = sample.absoluteTimestamp.difference(connectionStartTime).inMilliseconds.toDouble() / 1000.0;
       
       btrData.add(FlSpot(relativeTimeSeconds, sample.btr));
       atrData.add(FlSpot(relativeTimeSeconds, sample.atr));
