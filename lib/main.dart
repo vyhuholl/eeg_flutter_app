@@ -182,7 +182,7 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
-  String _statusMessage = 'Initializing EEG System...';
+  String _statusMessage = 'Запускаем приложение...';
   bool _isError = false;
 
   @override
@@ -194,7 +194,7 @@ class _SplashScreenState extends State<SplashScreen> {
   Future<void> _launchExternalAppAndNavigate() async {
     try {
       setState(() {
-        _statusMessage = 'Checking EasyEEG_BCI.exe...';
+        _statusMessage = 'Ищем EasyEEG_BCI.exe...';
         _isError = false;
       });
 
@@ -202,7 +202,7 @@ class _SplashScreenState extends State<SplashScreen> {
       final isAlreadyRunning = await ExeManager._isProcessRunning('EasyEEG_BCI');
       if (isAlreadyRunning) {
         setState(() {
-          _statusMessage = 'EasyEEG_BCI.exe already running. Starting app...';
+          _statusMessage = 'EasyEEG_BCI.exe уже запущен. Запускаем приложение...';
         });
         await Future.delayed(const Duration(milliseconds: 1000));
         _navigateToMainApp();
@@ -210,14 +210,14 @@ class _SplashScreenState extends State<SplashScreen> {
       }
 
       setState(() {
-        _statusMessage = 'Extracting EasyEEG_BCI.exe...';
+        _statusMessage = 'Извлекаем EasyEEG_BCI.exe...';
       });
 
       final launched = await ExeManager.launchExternalApp();
       
       if (launched) {
         setState(() {
-          _statusMessage = 'Verifying EasyEEG_BCI.exe startup...';
+          _statusMessage = 'Проверяем, что EasyEEG_BCI.exe запущен...';
         });
         
         // Wait a bit longer and verify the process is actually running
@@ -226,25 +226,25 @@ class _SplashScreenState extends State<SplashScreen> {
         final isRunning = await ExeManager._isProcessRunning('EasyEEG_BCI');
         if (isRunning) {
           setState(() {
-            _statusMessage = 'EasyEEG_BCI.exe confirmed running. Starting app...';
+            _statusMessage = 'EasyEEG_BCI.exe запущен. Запускаем приложение...';
           });
           await Future.delayed(const Duration(milliseconds: 1000));
           _navigateToMainApp();
         } else {
           setState(() {
-            _statusMessage = 'Error: EasyEEG_BCI.exe failed to start properly';
+            _statusMessage = 'Ошибка: EasyEEG_BCI.exe не смог запуститься';
             _isError = true;
           });
         }
       } else {
         setState(() {
-          _statusMessage = 'Error: Failed to launch EasyEEG_BCI.exe';
+          _statusMessage = 'Ошибка: EasyEEG_BCI.exe не смог запуститься';
           _isError = true;
         });
       }
     } catch (e) {
       setState(() {
-        _statusMessage = 'Error during startup: $e';
+        _statusMessage = 'Ошибка во время запуска: $e';
         _isError = true;
       });
       debugPrint('Error during external app launch: $e');
@@ -261,7 +261,7 @@ class _SplashScreenState extends State<SplashScreen> {
 
   void _retryLaunch() {
     setState(() {
-      _statusMessage = 'Retrying...';
+      _statusMessage = 'Пробуем запустить ещё раз...';
       _isError = false;
     });
     _launchExternalAppAndNavigate();
@@ -318,7 +318,7 @@ class _SplashScreenState extends State<SplashScreen> {
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
                 ),
-                child: const Text('Retry Launch'),
+                child: const Text('Попробовать ещё раз'),
               ),
               const SizedBox(height: 20),
               TextButton(
@@ -326,7 +326,7 @@ class _SplashScreenState extends State<SplashScreen> {
                 style: TextButton.styleFrom(
                   foregroundColor: Colors.white70,
                 ),
-                child: const Text('Continue Without External App'),
+                child: const Text('Продолжить без EasyEEG_BCI.exe'),
               ),
             ],
           ],
