@@ -105,9 +105,8 @@ class _MeditationScreenState extends State<MeditationScreen> {
     // Calculate 10-second moving average of beta / (theta + alpha)
     final popeValues = <double>[];
     for (final sample in recentSamples) {
-      final thetaAlphaSum = sample.theta + sample.alpha;
-      if (thetaAlphaSum != 0.0) {
-        popeValues.add(sample.beta / thetaAlphaSum);
+      if (sample.pope != 0.0) {
+        popeValues.add(sample.pope);
       }
     }
     

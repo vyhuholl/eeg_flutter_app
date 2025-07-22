@@ -18,7 +18,7 @@ class ChartConfig {
   final bool enableInteraction;
 
   const ChartConfig({
-    this.refreshRate = 30.0,
+    this.refreshRate = 100.0, // Match 100Hz data rate (10ms intervals)
     this.showGrid = true,
     this.enableInteraction = true,
   });
@@ -96,8 +96,10 @@ class EEGDataProvider with ChangeNotifier {
 
   void _setupRefreshTimer() {
     _refreshTimer?.cancel();
-    final refreshInterval = (1000 / _chartConfig.refreshRate).round();
-    _refreshTimer = Timer.periodic(Duration(milliseconds: refreshInterval), (timer) {
+    // Timer now only handles periodic maintenance tasks, not data updates
+    // Data updates happen immediately in _onJsonSamplesReceived
+    const maintenanceInterval = 1000; // 1 second for visibility updates
+    _refreshTimer = Timer.periodic(const Duration(milliseconds: maintenanceInterval), (timer) {
       if (!_isRefreshing) {
         _refreshData();
       }
@@ -106,11 +108,11 @@ class EEGDataProvider with ChangeNotifier {
 
   void _refreshData() {
     _isRefreshing = true;
-    _updateCounter++;
     // Update chart visibility based on data availability
     _updateAdaptiveVisibility();
-
-    notifyListeners();
+    
+    // Only notify listeners if there were visibility changes
+    // Main data updates are handled directly in _onJsonSamplesReceived
     
     _isRefreshing = false;
   }
@@ -148,8 +150,9 @@ class EEGDataProvider with ChangeNotifier {
 
   void _onJsonSamplesReceived(List<EEGJsonSample> samples) {
     _latestJsonSamples = samples;
+    _updateCounter++;
     _updateEEGChartData(samples);
-    notifyListeners();
+    notifyListeners(); // Immediately update UI when new data arrives
   }
 
   void _onDataError(error) {

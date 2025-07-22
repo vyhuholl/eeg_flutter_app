@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:async';
 import 'dart:collection';
 
-/// JSON-based EEG sample for new data format with brainwave bands
+/// JSON-based EEG sample for new data format with brainwave bands and ratios
 class EEGJsonSample {
   final double timeDelta;
   final double eegValue;
@@ -12,6 +12,11 @@ class EEGJsonSample {
   final double alpha;
   final double beta;
   final double gamma;
+  final double btr;    // beta / theta (0 if theta is 0)
+  final double atr;    // alpha / theta (0 if theta is 0)
+  final double pope;   // beta / (theta + alpha) (0 if theta is 0 and alpha is 0)
+  final double gtr;    // gamma / theta (0 if theta is 0)
+  final double rab;    // alpha / beta (0 if beta is 0)
 
   const EEGJsonSample({
     required this.timeDelta,
@@ -22,6 +27,11 @@ class EEGJsonSample {
     required this.alpha,
     required this.beta,
     required this.gamma,
+    required this.btr,
+    required this.atr,
+    required this.pope,
+    required this.gtr,
+    required this.rab,
   });
 
   /// Create from JSON string with time delta processing
@@ -65,6 +75,13 @@ class EEGJsonSample {
     double beta = b1 + b2 + b3;
     double gamma = g1;
 
+    // Calculate brainwave ratios with division by zero protection
+    double btr = theta == 0.0 ? 0.0 : beta / theta;
+    double atr = theta == 0.0 ? 0.0 : alpha / theta;
+    double pope = (theta == 0.0 && alpha == 0.0) ? 0.0 : beta / (theta + alpha);
+    double gtr = theta == 0.0 ? 0.0 : gamma / theta;
+    double rab = beta == 0.0 ? 0.0 : alpha / beta;
+
     // Process time delta to absolute timestamp
     final absoluteTimestamp = processor.processDelta(timeDelta);
 
@@ -77,6 +94,11 @@ class EEGJsonSample {
       alpha: alpha,
       beta: beta,
       gamma: gamma,
+      btr: btr,
+      atr: atr,
+      pope: pope,
+      gtr: gtr,
+      rab: rab,
     );
   }
 
@@ -114,6 +136,11 @@ class EEGJsonSample {
       'alpha': alpha,
       'beta': beta,
       'gamma': gamma,
+      'btr': btr,
+      'atr': atr,
+      'pope': pope,
+      'gtr': gtr,
+      'rab': rab,
       'absoluteTimestamp': absoluteTimestamp.millisecondsSinceEpoch,
       'sequenceNumber': sequenceNumber,
     };
@@ -121,7 +148,7 @@ class EEGJsonSample {
 
   @override
   String toString() {
-    return 'EEGJsonSample(timeDelta: ${timeDelta}ms, eegValue: $eegValue, theta: $theta, alpha: $alpha, beta: $beta, gamma: $gamma, seq: $sequenceNumber)';
+    return 'EEGJsonSample(timeDelta: ${timeDelta}ms, eegValue: $eegValue, theta: $theta, alpha: $alpha, beta: $beta, gamma: $gamma, btr: $btr, atr: $atr, pope: $pope, gtr: $gtr, rab: $rab, seq: $sequenceNumber)';
   }
 }
 
@@ -276,24 +303,21 @@ class EEGJsonParseException implements Exception {
 
 /// Configuration for EEG data collection
 class EEGConfig {
-  final int sampleRate;
   final String deviceAddress;
   final int devicePort;
   final int bufferSize;
 
   const EEGConfig({
-    required this.sampleRate,
     required this.deviceAddress,
     required this.devicePort,
-    this.bufferSize = 30000, // Default to 120 seconds at 250Hz (120 * 250 = 30,000)
+    this.bufferSize = 12000, // Default to 120 seconds at 100Hz (120 * 100 = 12,000)
   });
 
   factory EEGConfig.defaultConfig() {
     return const EEGConfig(
-      sampleRate: 250,
       deviceAddress: '0.0.0.0',
       devicePort: 2000,
-      bufferSize: 30000, // 120 seconds * 250 samples/second = 30,000 samples
+      bufferSize: 12000, // 120 seconds * 100 samples/second = 12,000 samples
     );
   }
 }
@@ -315,6 +339,11 @@ class EEGJsonBuffer {
       alpha: 0.0,
       beta: 0.0,
       gamma: 0.0,
+      btr: 0.0,
+      atr: 0.0,
+      pope: 0.0,
+      gtr: 0.0,
+      rab: 0.0,
     ));
 
   void add(EEGJsonSample sample) {

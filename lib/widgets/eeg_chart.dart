@@ -55,7 +55,7 @@ class EEGChart extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           child: LineChart(
             _buildLineChartData(eegProvider, connectionProvider),
-            duration: const Duration(milliseconds: 150),
+            duration: const Duration(milliseconds: 0), // No animation for real-time data
             curve: Curves.linear,
           ),
         );
@@ -123,10 +123,7 @@ class EEGChart extends StatelessWidget {
       final relativeTimeSeconds = sample.absoluteTimestamp.difference(connectionStartTime).inSeconds.toDouble();
       
       // Relaxation line: alpha / beta (hide if beta = 0)
-      if (sample.beta != 0.0) {
-        final relaxationValue = sample.alpha / sample.beta;
-        relaxationData.add(FlSpot(relativeTimeSeconds, relaxationValue));
-      }
+      relaxationData.add(FlSpot(relativeTimeSeconds, sample.rab));
     }
     
     final lines = <LineChartBarData>[];
@@ -171,8 +168,7 @@ class EEGChart extends StatelessWidget {
       final relativeTimeSeconds = currentSample.absoluteTimestamp.difference(connectionStartTime).inSeconds.toDouble();
       
       // Calculate current focus value
-      final thetaAlphaSum = currentSample.theta + currentSample.alpha;
-      if (thetaAlphaSum == 0.0) continue; // Skip if division by zero
+      if (currentSample.pope == 0.0) continue; // Skip if division by zero
       
       // Collect focus values from the last 10 seconds
       final windowStartTime = currentTimestamp - movingAverageWindowMs;
@@ -184,10 +180,8 @@ class EEGChart extends StatelessWidget {
         
         // Only include samples within the 10-second window
         if (sampleTimestamp >= windowStartTime) {
-          final sampleThetaAlphaSum = sample.theta + sample.alpha;
-          if (sampleThetaAlphaSum != 0.0) {
-            final focusValue = sample.beta / sampleThetaAlphaSum;
-            focusValues.add(focusValue);
+          if (sample.pope != 0.0) {
+            focusValues.add(sample.pope);
           }
         }
       }
@@ -232,20 +226,9 @@ class EEGChart extends StatelessWidget {
     for (final sample in recentSamples) {
       final relativeTimeSeconds = sample.absoluteTimestamp.difference(connectionStartTime).inSeconds.toDouble();
       
-      // Only calculate if theta is not zero
-      if (sample.theta != 0.0) {
-        // BTR line: beta / theta
-        final btrValue = sample.beta / sample.theta;
-        btrData.add(FlSpot(relativeTimeSeconds, btrValue));
-        
-        // ATR line: alpha / theta
-        final atrValue = sample.alpha / sample.theta;
-        atrData.add(FlSpot(relativeTimeSeconds, atrValue));
-        
-        // GTR line: gamma / theta
-        final gtrValue = sample.gamma / sample.theta;
-        gtrData.add(FlSpot(relativeTimeSeconds, gtrValue));
-      }
+      btrData.add(FlSpot(relativeTimeSeconds, sample.btr));
+      atrData.add(FlSpot(relativeTimeSeconds, sample.atr));
+      gtrData.add(FlSpot(relativeTimeSeconds, sample.gtr));
     }
     
     final lines = <LineChartBarData>[];

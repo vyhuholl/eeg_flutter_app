@@ -225,6 +225,11 @@ class UDPReceiver {
         alpha: 0.0,
         beta: 0.0,
         gamma: 0.0,
+        btr: 0.0,
+        atr: 0.0,
+        pope: 0.0,
+        gtr: 0.0,
+        rab: 0.0,
       );
       
       _jsonDataController.add(fallbackSample);

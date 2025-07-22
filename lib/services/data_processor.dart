@@ -85,6 +85,11 @@ class EEGDataProcessor {
         alpha: sample.alpha,
         beta: sample.beta,
         gamma: sample.gamma,
+        btr: sample.btr,
+        atr: sample.atr,
+        pope: sample.pope,
+        gtr: sample.gtr,
+        rab: sample.rab,
       ));
     }
     
