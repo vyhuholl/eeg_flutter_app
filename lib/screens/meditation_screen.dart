@@ -350,7 +350,7 @@ class _MeditationScreenState extends State<MeditationScreen> {
             width: _currentCircleSize,
             height: _currentCircleSize,
             child: Image.asset(
-              'assets/circle.png',
+              'assets/images/circle.png',
               fit: BoxFit.contain,
             ),
           ),
@@ -389,7 +389,7 @@ class _MeditationScreenState extends State<MeditationScreen> {
           width: _currentCircleSize,
           height: _currentCircleSize,
           child: Image.asset(
-            'assets/circle.png',
+            'assets/images/circle.png',
             fit: BoxFit.contain,
           ),
         ),

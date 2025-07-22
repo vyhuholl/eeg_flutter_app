@@ -164,7 +164,7 @@ void main() async {
   // Ensure Flutter binding is initialized for async operations
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Start the Flutter application with splash screen
+  // Start the Flutter application with setup instructions screen
   runApp(const EEGApp());
 }
 
@@ -201,8 +201,106 @@ class EEGApp extends StatelessWidget {
           visualDensity: VisualDensity.adaptivePlatformDensity,
           useMaterial3: true,
         ),
-        home: const SplashScreen(), // Start with splash screen
+        home: const SetupInstructionsScreen(), // Start with setup instructions screen
         debugShowCheckedModeBanner: false,
+      ),
+    );
+  }
+}
+
+class SetupInstructionsScreen extends StatelessWidget {
+  const SetupInstructionsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Top text
+              const Text(
+                'Включите устройство и закрепите его на голове при помощи эластичной ленты, как на картинке:',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w500,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 30),
+              
+              // Image
+              Container(
+                constraints: const BoxConstraints(
+                  maxWidth: 400,
+                  maxHeight: 400,
+                ),
+                child: Image.asset(
+                  'assets/images/EasyEEGBCI_Headlayout_face.png',
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      width: 300,
+                      height: 300,
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.white54),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Center(
+                        child: Text(
+                          'Изображение недоступно',
+                          style: TextStyle(color: Colors.white54),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 30),
+              
+              // Bottom text
+              const Text(
+                'Как только будете готовы, нажмите "Продолжить"',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 40),
+              
+              // Continue button
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(
+                      builder: (context) => const SplashScreen(),
+                    ),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: const Text(
+                  'Продолжить',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

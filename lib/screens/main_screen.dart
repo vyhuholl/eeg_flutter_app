@@ -36,7 +36,7 @@ class _MainScreenState extends State<MainScreen> {
           children: [
             // Connect icon from assets
             Image.asset(
-              'assets/connect_icon.png',
+              'assets/images/connect_icon.png',
               width: 120,
               height: 120,
             ),

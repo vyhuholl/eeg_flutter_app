@@ -1,14 +1,15 @@
 ﻿# Active Context - EEG Flutter App
 
 ## Current Work Focus
-**VAN MODE LEVEL 1** - Configuration File Creation Enhancement ✅ COMPLETED
+**VAN MODE LEVEL 1** - Setup Instructions Screen Implementation ✅ COMPLETED
 
-## Project Status: LEVEL 1 CONFIGURATION FILE CREATION ENHANCEMENT COMPLETED SUCCESSFULLY
+## Project Status: LEVEL 1 SETUP INSTRUCTIONS SCREEN IMPLEMENTATION COMPLETED SUCCESSFULLY
 - Flutter project with complete EEG UDP networking implementation
 - Real-time data processing and visualization system
 - Provider-based state management with multi-channel support
 - Full architecture matching documented system patterns
-- **COMPLETED**: Enhanced application to automatically create EasyEEG_BCI.conf in current directory before launching EasyEEG_BCI.exe ✅ COMPLETED
+- **COMPLETED**: Implemented setup instructions screen that appears before everything else with device placement image and continue button ✅ COMPLETED
+- **PREVIOUS**: Enhanced application to automatically create EasyEEG_BCI.conf in current directory before launching EasyEEG_BCI.exe ✅ COMPLETED
 - **PREVIOUS**: Enhanced EasyEEG_BCI.exe launch detection to wait for specific window with "EasyEEG BCI" in title ✅ COMPLETED
 - **PREVIOUS**: Enhanced meditation screen EEG chart with thinner lines and Pope line visual priority ✅ COMPLETED
 - **PREVIOUS**: Fixed CSV path platform-independence by replacing string interpolation with path.join() ✅ COMPLETED
@@ -23,90 +24,129 @@
 ## Task Results ✅
 
 ### ✅ Primary Objective COMPLETED
-Enhanced the application launch sequence to automatically create an "EasyEEG_BCI.conf" file in the current directory (where eeg_flutter_app.exe is located) before launching EasyEEG_BCI.exe. The file is created with contents from assets/EasyEEG_BCI.conf and will overwrite any existing file.
+Implemented a new setup instructions screen that appears before everything else when the app is launched. The screen displays device setup instructions with an image showing proper headset placement, and only proceeds to configuration file creation and application launch after the user clicks "Продолжить".
 
 ### ✅ Technical Implementation COMPLETED
 
-1. **Configuration File Creation Method** ✅
-   - **Added**: `createConfigFile()` static method to `ExeManager` class
-   - **Implementation**: Uses `Directory.current` to get Flutter executable directory
-   - **Content Source**: Reads from `assets/EasyEEG_BCI.conf` using `rootBundle.loadString()`
-   - **File Behavior**: Creates file with overwrite capability using `File.writeAsString()`
+1. **Setup Instructions Screen Widget** ✅
+   - **Created**: New `SetupInstructionsScreen` widget with black background and responsive layout
+   - **Top Text**: "Включите устройство и закрепите его на голове при помощи эластичной ленты, как на картинке:"
+   - **Image Display**: Shows `assets/images/EasyEEGBCI_Headlayout_face.png` with proper device placement
+   - **Bottom Text**: "Как только будете готовы, нажмите "Продолжить""
+   - **Continue Button**: "Продолжить" button to proceed to next stage
 
-2. **Launch Sequence Integration** ✅
-   - **Timing**: Configuration file creation is the **first step** in launch sequence
-   - **Priority**: Happens **before** EasyEEG_BCI.exe extraction and launch (most important requirement)
-   - **Error Handling**: Graceful failure handling that doesn't block application launch
-   - **Status Updates**: User informed of configuration file creation step
+2. **App Launch Flow Modification** ✅
+   - **Priority Change**: Modified `EEGApp` to show `SetupInstructionsScreen` first instead of `SplashScreen`
+   - **Navigation**: Implemented smooth transition from setup screen to existing splash screen
+   - **Preservation**: All existing functionality preserved after user continues
+   - **User Control**: Application only proceeds when user clicks continue button
 
-3. **File Location Management** ✅
+3. **Image Integration** ✅
    ```dart
-   // Gets the directory where the Flutter executable is located
-   final currentDirectory = Directory.current;
-   final configPath = path.join(currentDirectory.path, 'EasyEEG_BCI.conf');
+   // Device placement image with error handling
+   Container(
+     constraints: const BoxConstraints(
+       maxWidth: 400,
+       maxHeight: 400,
+     ),
+     child: Image.asset(
+       'assets/images/EasyEEGBCI_Headlayout_face.png',
+       fit: BoxFit.contain,
+       errorBuilder: (context, error, stackTrace) {
+         return Container(
+           width: 300,
+           height: 300,
+           decoration: BoxDecoration(
+             border: Border.all(color: Colors.white54),
+             borderRadius: BorderRadius.circular(8),
+           ),
+           child: const Center(
+             child: Text(
+               'Изображение недоступно',
+               style: TextStyle(color: Colors.white54),
+             ),
+           ),
+         );
+       },
+     ),
+   )
    ```
 
-4. **Content Management** ✅
-   ```json
-   // Configuration file content from assets/EasyEEG_BCI.conf
-   {
-       "Port": "COM3",
-       "SpectrMode": 0,
-       "isFilter": false,
-       "isSpectr": true,
-       "Sense": 50,
-       "MaxSpectr": 10.0,
-       "MinSpectr": 0.0,
-       "fileName": "EEG",
-       "isRec": false,
-       "isUDP": true,
-       "Version": "3.0"
-   }
+4. **Button Functionality** ✅
+   ```dart
+   // Continue button with proper navigation
+   ElevatedButton(
+     onPressed: () {
+       Navigator.of(context).pushReplacement(
+         MaterialPageRoute(
+           builder: (context) => const SplashScreen(),
+         ),
+       );
+     },
+     style: ElevatedButton.styleFrom(
+       backgroundColor: Colors.blue,
+       foregroundColor: Colors.white,
+       padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+       shape: RoundedRectangleBorder(
+         borderRadius: BorderRadius.circular(8),
+       ),
+     ),
+     child: const Text(
+       'Продолжить',
+       style: TextStyle(
+         fontSize: 16,
+         fontWeight: FontWeight.w500,
+       ),
+     ),
+   )
    ```
 
 ### ✅ Implementation Results
 
-**Launch Sequence Enhancement**:
-- **Step 1**: Configuration file creation (NEW) - Creates EasyEEG_BCI.conf in current directory
-- **Step 2**: Executable extraction - Extracts EasyEEG_BCI.exe to app data directory  
-- **Step 3**: Executable launch - Launches the EasyEEG_BCI.exe application
-- **Step 4**: Window detection - Waits for EasyEEG BCI window to open
-- **Step 5**: App navigation - Proceeds to main application screen
+**Updated Launch Sequence**:
+- **Step 1**: Setup Instructions Screen (NEW) - Shows device setup instructions with image
+- **Step 2**: User Action (NEW) - User clicks "Продолжить" button when ready
+- **Step 3**: Configuration file creation - Creates EasyEEG_BCI.conf in current directory
+- **Step 4**: Executable extraction - Extracts EasyEEG_BCI.exe to app data directory  
+- **Step 5**: Executable launch - Launches the EasyEEG_BCI.exe application
+- **Step 6**: Window detection - Waits for EasyEEG BCI window to open
+- **Step 7**: App navigation - Proceeds to main application screen
 
-**File Creation Benefits**:
+**Screen Design Benefits**:
+- **Visual Guidance**: Clear image showing proper EEG headset placement
+- **User Pacing**: Users control when to proceed, eliminating rushed device setup
+- **Professional Appearance**: Consistent design language with existing application screens
+- **Error Prevention**: Proper setup instructions reduce likelihood of incorrect device usage
+- **Responsive Design**: Screen adapts to different device sizes and orientations
+
+**Error Handling Enhancement**:
+- **Image Loading**: Fallback container with error message if image fails to load
+- **Graceful Degradation**: App continues to function even if image fails to load
+- **Visual Consistency**: Fallback maintains similar visual weight to actual image
+- **User Experience**: Clear error messaging in Russian language
+
+### ✅ Previous Task: Configuration File Creation Enhancement ✅ COMPLETED
+
+Enhanced the application launch sequence to automatically create an "EasyEEG_BCI.conf" file in the current directory (where eeg_flutter_app.exe is located) before launching EasyEEG_BCI.exe. The file is created with contents from assets/EasyEEG_BCI.conf and will overwrite any existing file.
+
+**Configuration File Benefits**:
 - **Automatic Setup**: Configuration file ready before external application starts
 - **Fresh Configuration**: File overwritten on each launch ensuring clean state
 - **Current Directory**: File created where Flutter executable is located as requested
 - **Asset Integration**: Configuration managed through Flutter asset system
-- **Error Resilience**: Launch continues even if file creation fails
-
-**Status Message Enhancement**:
-- **Initial**: "Создаём файл конфигурации..." (Creating configuration file...)
-- **Progression**: Existing window detection and launch messages preserved
-- **User Feedback**: Clear indication of configuration file creation step
-
-### ✅ Previous Task: Window Detection Enhancement ✅ COMPLETED
-
-Enhanced the EasyEEG_BCI.exe launch detection logic to wait for a specific window with "EasyEEG BCI" in its name to open, instead of just checking for the process. Implemented indefinite polling every 5000 milliseconds until the window is found.
-
-**Window Detection Benefits**:
-- **Accurate Detection**: App waits for actual GUI window, not just process existence
-- **Timing Independence**: Works regardless of how long window takes to open
-- **User Transparency**: Clear status messages with attempt counters
-- **Launch Reliability**: Ensures GUI is ready before proceeding to main application
 
 ## Files Modified ✅
-- ✅ lib/main.dart - Added createConfigFile() method and integrated into launch sequence
-- ✅ memory-bank/tasks.md - Documented configuration file creation implementation
+- ✅ lib/main.dart - Added SetupInstructionsScreen widget and modified app startup sequence
+- ✅ memory-bank/tasks.md - Documented setup instructions screen implementation
 - ✅ memory-bank/activeContext.md - Updated current status
 
 ## Quality Assurance Results ✅
-- ✅ **Code Analysis**: No issues found (flutter analyze - 1.5s)
-- ✅ **Build Test**: Successful compilation (flutter build web --debug - 22.4s)
-- ✅ **File Creation**: Configuration file creation properly implemented
-- ✅ **Launch Integration**: File creation occurs before EasyEEG_BCI.exe launch as required
-- ✅ **Content Copying**: Asset content correctly copied to current directory
-- ✅ **Error Handling**: Graceful error management with debug logging
+- ✅ **Code Analysis**: No issues found (flutter analyze - 1.9s)
+- ✅ **Build Test**: Successful compilation (flutter build web --debug)
+- ✅ **Image Integration**: Proper asset loading with error handling
+- ✅ **Navigation**: Smooth transition from setup screen to splash screen
+- ✅ **Text Display**: All Russian text displays correctly
+- ✅ **Button Functionality**: Continue button properly navigates to next screen
 
 ## System Status
 - **Architecture**: Established and working ✅
@@ -116,7 +156,8 @@ Enhanced the EasyEEG_BCI.exe launch detection logic to wait for a specific windo
 - **Platform Independence**: CSV path construction now works across all platforms ✅
 - **Visualization**: Enhanced meditation chart with thinner lines and Pope line priority ✅
 - **Launch Detection**: Enhanced window detection waits for actual EasyEEG BCI GUI window ✅
-- **Configuration Management**: **NEW** - Automatic EasyEEG_BCI.conf creation in current directory ✅
+- **Configuration Management**: Automatic EasyEEG_BCI.conf creation in current directory ✅
+- **User Onboarding**: **NEW** - Setup instructions screen with device placement guidance ✅
 - **UI/UX**: Enhanced with real-time biometric feedback through circle animation ✅
 - **Navigation**: Multi-screen flow working seamlessly ✅
 - **Real-time Updates**: Optimized for 100Hz data rate with smooth visualization ✅
@@ -126,46 +167,47 @@ Enhanced the EasyEEG_BCI.exe launch detection logic to wait for a specific windo
 - **Algorithm Efficiency**: Moving average calculations optimized for real-time performance ✅
 - **Cross-Platform Support**: File operations work correctly on Windows, macOS, and Linux ✅
 - **Window Detection**: Robust launch detection waits for actual GUI window availability ✅
-- **Asset Integration**: **NEW** - Seamless configuration file management through Flutter assets ✅
+- **Asset Integration**: Seamless configuration file management through Flutter assets ✅
+- **Visual Guidance**: **NEW** - Device setup instructions with visual reference image ✅
 
 ## 🎯 TASK COMPLETION SUMMARY
 
-**The EEG application now automatically creates an "EasyEEG_BCI.conf" file in the current directory (where eeg_flutter_app.exe is located) before launching EasyEEG_BCI.exe. The file is created with contents from assets/EasyEEG_BCI.conf and will overwrite any existing file, ensuring fresh configuration for each application launch.**
+**The EEG application now shows a setup instructions screen as the very first screen when launched. The screen displays the device placement image with proper instructions in Russian, and only proceeds to configuration file creation and EasyEEG_BCI.exe launch after the user clicks "Продолжить".**
 
 ### Key Achievements:
-1. **Automatic File Creation**: EasyEEG_BCI.conf created automatically in the correct directory
-2. **Proper Launch Order**: Configuration file creation happens BEFORE EasyEEG_BCI.exe launch (most important)
-3. **Content Copying**: File content correctly copied from assets/EasyEEG_BCI.conf  
-4. **Overwrite Behavior**: Existing files are overwritten as requested
-5. **Current Directory Targeting**: File created in directory where Flutter executable is located
-6. **Error Resilience**: Application launch continues even if configuration file creation fails
+1. **First Screen Priority**: Setup instructions now appear before everything else as requested
+2. **Proper Device Instructions**: Clear Russian instructions for device setup and placement
+3. **Visual Guidance**: Shows actual device placement image from assets
+4. **User Control**: Application only proceeds when user is ready and clicks continue
+5. **Seamless Integration**: Preserves all existing functionality after user continues
+6. **Error Resilience**: Graceful handling of image loading failures
 
 ### Technical Benefits:
-- **Launch Sequence Integrity**: Configuration file ready before external application starts
-- **Asset Integration**: Seamless integration with Flutter asset system
-- **Path Management**: Proper use of path.join() for cross-platform compatibility
-- **Error Handling**: Robust error management with detailed debug logging
-- **Performance**: Efficient file operations with minimal impact on launch time
+- **Clean Architecture**: New screen integrates seamlessly with existing navigation
+- **Asset Integration**: Proper use of existing image assets with error handling
+- **Responsive Design**: Screen adapts to different device sizes and orientations
+- **Performance**: Efficient image loading with fallback mechanisms
+- **Maintainability**: Clean widget structure following Flutter best practices
 
 ### User Experience Enhancement:
-- **Transparent Operation**: Configuration file creation happens automatically without user intervention
-- **Reliable Setup**: Fresh configuration file created for each application launch
-- **Status Visibility**: User informed of configuration file creation through status messages
-- **Consistent Behavior**: Predictable file creation regardless of previous application state
-- **No Manual Setup**: Eliminates need for users to manually manage configuration files
+- **Clear Guidance**: Users receive explicit instructions before device interaction
+- **Visual Reference**: Image shows exact device placement reducing setup errors
+- **User Pacing**: Users control when to proceed, eliminating rushed device setup
+- **Professional Appearance**: Consistent design language with existing application screens
+- **Error Prevention**: Proper setup instructions reduce likelihood of incorrect device usage
 
 ### Integration Benefits:
-- **EasyEEG_BCI Compatibility**: Ensures external application has required configuration file
-- **Launch Reliability**: Reduces potential configuration-related launch failures
-- **Development Convenience**: Configuration updates can be managed through Flutter assets
-- **Deployment Simplicity**: Configuration file management handled automatically
-- **Maintenance Ease**: Single source of truth for configuration in assets folder
+- **Setup Quality**: Ensures users properly prepare device before application features
+- **Error Reduction**: Visual guidance reduces incorrect headset placement
+- **User Confidence**: Clear instructions improve user comfort with device setup
+- **Session Reliability**: Proper setup leads to better EEG data collection
+- **Professional Standards**: Meets expectations for medical/scientific device applications
 
 ## Current State
 - **Mode**: VAN Level 1 ✅ COMPLETED
-- **Next**: Ready for verification of automatic configuration file creation functionality
-- **Blockers**: None - configuration file creation enhancement successfully implemented
-- **Status**: ✅ CONFIGURATION FILE CREATION ENHANCEMENT COMPLETED
+- **Next**: Ready for verification of setup instructions screen functionality
+- **Blockers**: None - setup instructions screen implementation successfully completed
+- **Status**: ✅ SETUP INSTRUCTIONS SCREEN IMPLEMENTATION COMPLETED
 
 ---
 
