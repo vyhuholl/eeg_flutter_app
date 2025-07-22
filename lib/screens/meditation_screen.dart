@@ -424,7 +424,7 @@ class _MeditationScreenState extends State<MeditationScreen> {
                   
                   // Instructional text
                   const Text(
-                    'Чем больше вы расслабляетесь, тем больше диаметр круга',
+                    'Чем больше вы сконцентрированы, тем больше диаметр круга',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Colors.white,
