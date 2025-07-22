@@ -1,3 +1,7 @@
+# Due to how external app is launched, this file is automatically created
+# when the app is launched via terminal. It should be ignored.
+EasyEEG_BCI.conf
+
 # Miscellaneous
 *.class
 *.log

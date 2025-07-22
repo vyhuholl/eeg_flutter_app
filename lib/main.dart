@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
@@ -35,7 +34,6 @@ class ExeManager {
     }
     
     final exePath = path.join(appDir.path, 'EasyEEG_BCI.exe');
-    final confPath = path.join(appDir.path, 'EasyEEG_BCI.conf');
 
     // Check if already extracted and up to date
     if (File(exePath).existsSync()) {
@@ -53,15 +51,6 @@ class ExeManager {
       // Write to app directory
       await File(exePath).writeAsBytes(bytes);
       debugPrint('EasyEEG_BCI.exe extracted successfully');
-
-      // Copy configuration file
-      final confByteData = kDebugMode 
-          ? await rootBundle.load('assets/EasyEEG_BCI_debug.conf')
-          : await rootBundle.load('assets/EasyEEG_BCI.conf');
-
-      final confBytes = confByteData.buffer.asUint8List();
-      await File(confPath).writeAsBytes(confBytes);
-      debugPrint('Configuration file extracted: ${kDebugMode ? 'debug' : 'release'} mode');
 
       return exePath;
     } catch (e) {
