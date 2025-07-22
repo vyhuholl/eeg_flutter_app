@@ -246,52 +246,52 @@ class EEGChart extends StatelessWidget {
     
     final lines = <LineChartBarData>[];
     
-    // Add Pope line (violet) if we have data
-    if (popeData.isNotEmpty) {
-      lines.add(LineChartBarData(
-        spots: popeData,
-        isCurved: false,
-        color: const Color(0xFFBF5AF2), // Violet
-        barWidth: 2.0,
-        isStrokeCapRound: false,
-        dotData: const FlDotData(show: false),
-        belowBarData: BarAreaData(show: false),
-      ));
-    }
-    
-    // Add BTR line (orange) if we have data
+    // Add BTR line (orange) if we have data - moved up to draw below Pope line
     if (btrData.isNotEmpty) {
       lines.add(LineChartBarData(
         spots: btrData,
         isCurved: false,
         color: const Color(0xFFFF9500), // Orange
-        barWidth: 2.0,
+        barWidth: 1.0, // Made thinner
         isStrokeCapRound: false,
         dotData: const FlDotData(show: false),
         belowBarData: BarAreaData(show: false),
       ));
     }
     
-    // Add ATR line (blue) if we have data
+    // Add ATR line (blue) if we have data - moved up to draw below Pope line
     if (atrData.isNotEmpty) {
       lines.add(LineChartBarData(
         spots: atrData,
         isCurved: false,
         color: const Color(0xFF007AFF), // Blue
-        barWidth: 2.0,
+        barWidth: 1.0, // Made thinner
         isStrokeCapRound: false,
         dotData: const FlDotData(show: false),
         belowBarData: BarAreaData(show: false),
       ));
     }
     
-    // Add GTR line (red) if we have data
+    // Add GTR line (red) if we have data - moved up to draw below Pope line
     if (gtrData.isNotEmpty) {
       lines.add(LineChartBarData(
         spots: gtrData,
         isCurved: false,
         color: const Color(0xFFFF3B30), // Red
-        barWidth: 2.0,
+        barWidth: 1.0, // Made thinner
+        isStrokeCapRound: false,
+        dotData: const FlDotData(show: false),
+        belowBarData: BarAreaData(show: false),
+      ));
+    }
+    
+    // Add Pope line (violet) last so it appears on top of all other lines
+    if (popeData.isNotEmpty) {
+      lines.add(LineChartBarData(
+        spots: popeData,
+        isCurved: false,
+        color: const Color(0xFFBF5AF2), // Violet
+        barWidth: 1.0, // Made thinner
         isStrokeCapRound: false,
         dotData: const FlDotData(show: false),
         belowBarData: BarAreaData(show: false),
