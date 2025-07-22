@@ -34,6 +34,21 @@ class _MainScreenState extends State<MainScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            // Instructions text above the connect icon
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20.0),
+              child: Text(
+                'В открывшемся окне нажмите кнопку "Подключить", потом нажмите кнопку "Старт".\nЗатем нажмите здесь "Подключить устройство".',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w400,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+            const SizedBox(height: 30),
+            
             // Connect icon from assets
             Image.asset(
               'assets/images/connect_icon.png',
