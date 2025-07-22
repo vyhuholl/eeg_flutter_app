@@ -96,8 +96,8 @@ class EEGDataProvider with ChangeNotifier {
 
   void _setupRefreshTimer() {
     _refreshTimer?.cancel();
-    // Timer now only handles periodic maintenance tasks, not data updates
-    // Data updates happen immediately in _onJsonSamplesReceived
+    // Periodic maintenance timer for visibility updates only
+    // Data updates are now throttled by the data processor at 60 FPS
     const maintenanceInterval = 1000; // 1 second for visibility updates
     _refreshTimer = Timer.periodic(const Duration(milliseconds: maintenanceInterval), (timer) {
       if (!_isRefreshing) {
@@ -151,29 +151,12 @@ class EEGDataProvider with ChangeNotifier {
   void _onJsonSamplesReceived(List<EEGJsonSample> samples) {
     _latestJsonSamples = samples;
     _updateCounter++;
-    _updateEEGChartData(samples);
-    notifyListeners(); // Immediately update UI when new data arrives
+    // Data processing is handled by the data processor, no need for duplicate processing
+    notifyListeners(); // Update UI with throttled data (max 60 FPS)
   }
 
   void _onDataError(error) {
     debugPrint('EEG data error: $error');
-  }
-
-  void _updateEEGChartData(List<EEGJsonSample> samples) {
-    // Use channel 0 for EEG time series data
-    final channelData = _chartData[0] ?? [];
-    
-    for (final sample in samples) {
-      final timestamp = sample.absoluteTimestamp.millisecondsSinceEpoch.toDouble();
-      channelData.add(FlSpot(timestamp, sample.eegValue));
-    }
-    
-    // Maintain reasonable chart data size
-    while (channelData.length > 1000) {
-      channelData.removeAt(0);
-    }
-    
-    _chartData[0] = channelData;
   }
 
   /// Get EEG time series data for charts

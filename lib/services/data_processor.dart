@@ -10,15 +10,31 @@ class EEGDataProcessor {
   
   late StreamController<List<EEGJsonSample>> _processedJsonDataController;
   Timer? _processingTimer;
+  Timer? _uiUpdateTimer;
   
   // Chart data for visualization
   final Map<int, List<FlSpot>> _chartData = {};
   final List<FlSpot> _eegTimeSeriesData = [];
   
+  // UI update throttling
+  bool _hasNewData = false;
+  
   EEGDataProcessor({required EEGConfig config}) 
     : _config = config,
       _jsonBuffer = EEGJsonBuffer(config.bufferSize) {
     _processedJsonDataController = StreamController<List<EEGJsonSample>>.broadcast();
+    _setupUIUpdateTimer();
+  }
+  
+  /// Setup UI update timer to throttle data streaming to reasonable rate
+  void _setupUIUpdateTimer() {
+    // Update UI at 60 FPS maximum (every ~16ms) instead of 100 Hz data rate
+    _uiUpdateTimer = Timer.periodic(const Duration(milliseconds: 16), (timer) {
+      if (_hasNewData) {
+        _processedJsonDataController.add(_jsonBuffer.getAll());
+        _hasNewData = false;
+      }
+    });
   }
   
   /// Stream of processed JSON EEG data
@@ -31,7 +47,7 @@ class EEGDataProcessor {
   void processJsonSample(EEGJsonSample sample) {
     _jsonBuffer.add(sample);
     _updateEEGTimeSeriesData(sample);
-    _processedJsonDataController.add(_jsonBuffer.getAll());
+    _hasNewData = true; // Mark that new data is available for UI update
   }
 
   /// Update EEG time series data for JSON samples
@@ -64,6 +80,8 @@ class EEGDataProcessor {
   void stopProcessing() {
     _processingTimer?.cancel();
     _processingTimer = null;
+    _uiUpdateTimer?.cancel();
+    _uiUpdateTimer = null;
   }
 
   /// Apply noise filtering to samples

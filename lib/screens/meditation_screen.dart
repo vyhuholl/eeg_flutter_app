@@ -1,8 +1,11 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:path_provider/path_provider.dart';
 import '../widgets/eeg_chart.dart';
 import '../providers/eeg_data_provider.dart';
+import '../models/eeg_data.dart';
 
 /// Meditation screen with timer and visual elements
 class MeditationScreen extends StatefulWidget {
@@ -24,18 +27,27 @@ class _MeditationScreenState extends State<MeditationScreen> {
   double? _baselinePope;
   double _currentCircleSize = 250.0;
   bool _isBaselineRecorded = false;
+  
+  // CSV debug logging
+  File? _csvFile;
+  bool _isCsvLogging = false;
+  StreamSubscription<List<EEGJsonSample>>? _csvDataSubscription;
 
   @override
   void initState() {
     super.initState();
     _startTimer();
     _startAnimationTimer();
+    if (isDebugModeOn) {
+      _initializeCsvLogging();
+    }
   }
 
   @override
   void dispose() {
     _timer.cancel();
     _animationTimer.cancel();
+    _stopCsvLogging();
     super.dispose();
   }
 
@@ -46,6 +58,10 @@ class _MeditationScreenState extends State<MeditationScreen> {
         // Stop timer after 5 minutes (300 seconds)
         if (_seconds >= 300) {
           _timer.cancel();
+          // Stop CSV logging when timer ends
+          if (isDebugModeOn) {
+            _stopCsvLogging();
+          }
         }
       });
     });
@@ -59,6 +75,9 @@ class _MeditationScreenState extends State<MeditationScreen> {
   }
 
   void _endMeditation() {
+    if (isDebugModeOn) {
+      _stopCsvLogging();
+    }
     // Navigate back to start screen
     Navigator.of(context).popUntil((route) => route.isFirst);
   }
@@ -118,7 +137,7 @@ class _MeditationScreenState extends State<MeditationScreen> {
   double _calculateCircleSize(double currentPope, double baselinePope) {
     const double baseSize = 250.0;
     const double maxSize = 500.0;
-    const double minSize = 250.0;
+    const double minSize = 50.0;
     
     // Calculate proportional change
     final popeRatio = baselinePope != 0.0 ? currentPope / baselinePope : 1.0;
@@ -126,6 +145,68 @@ class _MeditationScreenState extends State<MeditationScreen> {
     
     // Apply constraints
     return newSize.clamp(minSize, maxSize);
+  }
+
+  // CSV Debug Logging Methods
+  Future<void> _initializeCsvLogging() async {
+    try {
+      // Get the application documents directory
+      final directory = await getApplicationDocumentsDirectory();
+      final csvPath = '${directory.path}/EEG_samples.csv';
+      
+      _csvFile = File(csvPath);
+      
+      // Create CSV header with all EEGJsonSample attributes
+      const csvHeader = 'timeDelta;eegValue;absoluteTimestamp;sequenceNumber;theta;alpha;beta;gamma;btr;atr;pope;gtr;rab\n';
+      
+      // Overwrite file if it exists (write mode)
+      await _csvFile!.writeAsString(csvHeader, mode: FileMode.write);
+      
+      _isCsvLogging = true;
+      _startCsvDataSubscription();
+    } catch (e) {
+      debugPrint('Error initializing CSV logging: $e');
+    }
+  }
+
+  void _startCsvDataSubscription() {
+    final eegProvider = Provider.of<EEGDataProvider>(context, listen: false);
+    _csvDataSubscription = eegProvider.dataProcessor.processedJsonDataStream.listen(
+      (samples) {
+        if (_isCsvLogging && samples.isNotEmpty) {
+          _writeSamplesToCsv(samples);
+        }
+      },
+    );
+  }
+
+  Future<void> _writeSamplesToCsv(List<EEGJsonSample> samples) async {
+    if (_csvFile == null || !_isCsvLogging) return;
+    
+    try {
+      final csvLines = <String>[];
+      
+      for (final sample in samples) {
+        // Format the timestamp as ISO string for better readability
+        final timestampStr = sample.absoluteTimestamp.toIso8601String();
+        
+        final csvLine = '${sample.timeDelta};${sample.eegValue};$timestampStr;${sample.sequenceNumber};${sample.theta};${sample.alpha};${sample.beta};${sample.gamma};${sample.btr};${sample.atr};${sample.pope};${sample.gtr};${sample.rab}';
+        csvLines.add(csvLine);
+      }
+      
+      if (csvLines.isNotEmpty) {
+        final csvData = '${csvLines.join('\n')}\n';
+        await _csvFile!.writeAsString(csvData, mode: FileMode.append);
+      }
+    } catch (e) {
+      debugPrint('Error writing to CSV: $e');
+    }
+  }
+
+  void _stopCsvLogging() {
+    _isCsvLogging = false;
+    _csvDataSubscription?.cancel();
+    _csvDataSubscription = null;
   }
 
   Widget _buildLegend() {
