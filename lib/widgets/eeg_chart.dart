@@ -94,7 +94,7 @@ class EEGChart extends StatelessWidget {
     );
   }
 
-  /// Build main screen chart data for Focus and Relaxation using brainwave ratios
+  /// Build main screen chart data with focus + relaxation lines  
   List<LineChartBarData> _buildMainChartData(EEGDataProvider eegProvider, ConnectionProvider connectionProvider) {
     final jsonSamples = eegProvider.dataProcessor.getLatestJsonSamples();
     final connectionStartTime = connectionProvider.connectionStartTime;
@@ -114,17 +114,9 @@ class EEGChart extends StatelessWidget {
     
     if (recentSamples.isEmpty) return [];
     
-    // Calculate brainwave ratios and apply moving average to focus
+    // Calculate brainwave ratios and apply moving average to both focus and relaxation
     final focusData = _calculateFocusMovingAverage(recentSamples, connectionStartTime);
-    final relaxationData = <FlSpot>[];
-    
-    // Calculate relaxation line using relative time with fractional seconds
-    for (final sample in recentSamples) {
-      final relativeTimeSeconds = sample.absoluteTimestamp.difference(connectionStartTime).inMilliseconds.toDouble() / 1000.0;
-      
-      // Relaxation line: alpha / beta (hide if beta = 0)
-      relaxationData.add(FlSpot(relativeTimeSeconds, sample.rab));
-    }
+    final relaxationData = _calculateRelaxationMovingAverage(recentSamples, connectionStartTime);
     
     final lines = <LineChartBarData>[];
     
@@ -207,6 +199,58 @@ class EEGChart extends StatelessWidget {
     }
     
     return focusData;
+  }
+
+  /// Calculate 10-second moving average for relaxation values using O(n) sliding window approach
+  List<FlSpot> _calculateRelaxationMovingAverage(List<EEGJsonSample> samples, DateTime connectionStartTime) {
+    final relaxationData = <FlSpot>[];
+    const movingAverageWindowMs = 10 * 1000; // 10 seconds in milliseconds
+    
+    if (samples.isEmpty) return relaxationData;
+    
+    // Sliding window variables for O(n) complexity
+    double runningSum = 0.0;
+    int validSamplesCount = 0;
+    int windowStart = 0;
+    
+    for (int i = 0; i < samples.length; i++) {
+      final currentSample = samples[i];
+      final currentTimestamp = currentSample.absoluteTimestamp.millisecondsSinceEpoch.toDouble();
+      final relativeTimeSeconds = currentSample.absoluteTimestamp.difference(connectionStartTime).inMilliseconds.toDouble() / 1000.0;
+      
+      // Skip samples with invalid RAB values
+      if (currentSample.rab == 0.0) continue;
+      
+      // Add current sample to window
+      runningSum += currentSample.rab;
+      validSamplesCount++;
+      
+      // Remove samples that fall outside the 10-second window
+      final windowStartTime = currentTimestamp - movingAverageWindowMs;
+      while (windowStart <= i) {
+        final windowSample = samples[windowStart];
+        final windowSampleTimestamp = windowSample.absoluteTimestamp.millisecondsSinceEpoch.toDouble();
+        
+        if (windowSampleTimestamp >= windowStartTime) {
+          break; // This sample is still within the window
+        }
+        
+        // Remove this sample from the running calculation
+        if (windowSample.rab != 0.0) {
+          runningSum -= windowSample.rab;
+          validSamplesCount--;
+        }
+        windowStart++;
+      }
+      
+      // Calculate moving average if we have valid data
+      if (validSamplesCount > 0) {
+        final average = runningSum / validSamplesCount;
+        relaxationData.add(FlSpot(relativeTimeSeconds, average));
+      }
+    }
+    
+    return relaxationData;
   }
 
   /// Build meditation screen chart data with Pope, BTR, ATR, GTR lines
