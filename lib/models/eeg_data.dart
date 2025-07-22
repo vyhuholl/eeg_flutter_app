@@ -8,6 +8,15 @@ class EEGJsonSample {
   final double eegValue;
   final DateTime absoluteTimestamp;
   final int sequenceNumber;
+  final double d1;
+  final double t1;
+  final double t2;
+  final double a1;
+  final double a2;
+  final double b1;
+  final double b2;
+  final double b3;
+  final double g1;
   final double theta;
   final double alpha;
   final double beta;
@@ -23,6 +32,15 @@ class EEGJsonSample {
     required this.eegValue,
     required this.absoluteTimestamp,
     required this.sequenceNumber,
+    required this.d1,
+    required this.t1,
+    required this.t2,
+    required this.a1,
+    required this.a2,
+    required this.b1,
+    required this.b2,
+    required this.b3,
+    required this.g1,
     required this.theta,
     required this.alpha,
     required this.beta,
@@ -60,6 +78,7 @@ class EEGJsonSample {
     }
 
     // Extract brainwave band components with default values
+    double d1 = _parseDoubleWithDefault(json['d1'], 0.0);
     double t1 = _parseDoubleWithDefault(json['t1'], 0.0);
     double t2 = _parseDoubleWithDefault(json['t2'], 0.0);
     double a1 = _parseDoubleWithDefault(json['a1'], 0.0);
@@ -90,6 +109,15 @@ class EEGJsonSample {
       eegValue: eegValue,
       absoluteTimestamp: absoluteTimestamp,
       sequenceNumber: sequenceNumber,
+      d1: d1,
+      t1: t1,
+      t2: t2,
+      a1: a1,
+      a2: a2,
+      b1: b1,
+      b2: b2,
+      b3: b3,
+      g1: g1,
       theta: theta,
       alpha: alpha,
       beta: beta,
@@ -132,6 +160,15 @@ class EEGJsonSample {
     return <String, dynamic>{
       'd': timeDelta,
       'E': eegValue,
+      'd1': d1,
+      't1': t1,
+      't2': t2,
+      'a1': a1,
+      'a2': a2,
+      'b1': b1,
+      'b2': b2,
+      'b3': b3,
+      'g1': g1,
       'theta': theta,
       'alpha': alpha,
       'beta': beta,
@@ -148,7 +185,7 @@ class EEGJsonSample {
 
   @override
   String toString() {
-    return 'EEGJsonSample(timeDelta: ${timeDelta}ms, eegValue: $eegValue, theta: $theta, alpha: $alpha, beta: $beta, gamma: $gamma, btr: $btr, atr: $atr, pope: $pope, gtr: $gtr, rab: $rab, seq: $sequenceNumber)';
+    return 'EEGJsonSample(timeDelta: ${timeDelta}ms, eegValue: $eegValue, d1: $d1, t1: $t1, t2: $t2, a1: $a1, a2: $a2, b1: $b1, b2: $b2, b3: $b3, g1: $g1, theta: $theta, alpha: $alpha, beta: $beta, gamma: $gamma, btr: $btr, atr: $atr, pope: $pope, gtr: $gtr, rab: $rab, seq: $sequenceNumber)';
   }
 }
 
@@ -335,6 +372,15 @@ class EEGJsonBuffer {
       eegValue: 0, 
       absoluteTimestamp: DateTime.now(), 
       sequenceNumber: 0,
+      d1: 0.0,
+      t1: 0.0,
+      t2: 0.0,
+      a1: 0.0,
+      a2: 0.0,
+      b1: 0.0,
+      b2: 0.0,
+      b3: 0.0,
+      g1: 0.0,
       theta: 0.0,
       alpha: 0.0,
       beta: 0.0,

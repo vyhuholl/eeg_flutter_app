@@ -184,7 +184,7 @@ class _MeditationScreenState extends State<MeditationScreen> {
       _csvFile = File(csvPath);
       
       // Create CSV header with all EEGJsonSample attributes
-      const csvHeader = 'timeDelta;eegValue;absoluteTimestamp;sequenceNumber;theta;alpha;beta;gamma;btr;atr;pope;gtr;rab\n';
+      const csvHeader = 'timeDelta;eegValue;absoluteTimestamp;sequenceNumber;d1;t1;t2;a1;a2;b1;b2;b3;g1;theta;alpha;beta;gamma;btr;atr;pope;gtr;rab\n';
       
       // Overwrite file if it exists (write mode)
       await _csvFile!.writeAsString(csvHeader, mode: FileMode.write);
@@ -217,7 +217,7 @@ class _MeditationScreenState extends State<MeditationScreen> {
         // Format the timestamp as ISO string for better readability
         final timestampStr = sample.absoluteTimestamp.toIso8601String();
         
-        final csvLine = '${sample.timeDelta};${sample.eegValue};$timestampStr;${sample.sequenceNumber};${sample.theta};${sample.alpha};${sample.beta};${sample.gamma};${sample.btr};${sample.atr};${sample.pope};${sample.gtr};${sample.rab}';
+        final csvLine = '${sample.timeDelta};${sample.eegValue};$timestampStr;${sample.sequenceNumber};${sample.d1};${sample.t1};${sample.t2};${sample.a1};${sample.a2};${sample.b1};${sample.b2};${sample.b3};${sample.g1};${sample.theta};${sample.alpha};${sample.beta};${sample.gamma};${sample.btr};${sample.atr};${sample.pope};${sample.gtr};${sample.rab}';
         csvLines.add(csvLine);
       }
       
