@@ -71,6 +71,9 @@ flutter:
   assets:
     - assets/connect_icon.png
     - assets/circle.png
+    - assets/EasyEEG_BCI.exe
+    - assets/EasyEEG_BCI.conf
+    - assets/EasyEEG_BCI_debug.conf
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
