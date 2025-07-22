@@ -10,6 +10,30 @@ import 'screens/main_screen.dart';
 import 'models/eeg_data.dart';
 
 class ExeManager {
+  /// Creates EasyEEG_BCI.conf file in the current directory with contents from assets
+  static Future<bool> createConfigFile() async {
+    try {
+      // Get the current directory (where the Flutter app executable is located)
+      final currentDirectory = Directory.current;
+      final configPath = path.join(currentDirectory.path, 'EasyEEG_BCI.conf');
+      
+      debugPrint('Creating EasyEEG_BCI.conf at: $configPath');
+      
+      // Read the configuration content from assets
+      final configContent = await rootBundle.loadString('assets/EasyEEG_BCI.conf');
+      
+      // Write the configuration file to the current directory (overwrite if exists)
+      final configFile = File(configPath);
+      await configFile.writeAsString(configContent);
+      
+      debugPrint('EasyEEG_BCI.conf created successfully');
+      return true;
+    } catch (e) {
+      debugPrint('Error creating EasyEEG_BCI.conf: $e');
+      return false;
+    }
+  }
+
   static Future<String> extractAndGetExePath() async {
     // Use local app data directory for executables on Windows
     late Directory appDir;
@@ -67,6 +91,13 @@ class ExeManager {
     }
     
     try {
+      // First, create the configuration file in the current directory
+      final configCreated = await createConfigFile();
+      if (!configCreated) {
+        debugPrint('Warning: Failed to create EasyEEG_BCI.conf, but continuing with launch');
+        // Continue with launch even if config creation fails
+      }
+      
       final exePath = await extractAndGetExePath();
       
       // Verify the executable exists and is accessible
@@ -197,7 +228,7 @@ class _SplashScreenState extends State<SplashScreen> {
   Future<void> _launchExternalAppAndNavigate() async {
     try {
       setState(() {
-        _statusMessage = 'Ищем EasyEEG_BCI.exe...';
+        _statusMessage = 'Создаём файл конфигурации...';
         _isError = false;
       });
 
