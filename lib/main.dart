@@ -89,20 +89,24 @@ class ExeManager {
       
       debugPrint('Launching EasyEEG_BCI.exe from: $exePath');
       
-      // Launch the executable as a detached process
-      // Use runDetached to ensure the process continues independently
-      await Process.run(
-        'cmd',
-        ['/c', 'start', '/b', exePath],
+      // Launch the executable using Windows Start-Process (proper method for GUI apps)
+      // This is equivalent to PowerShell's Start-Process command
+      final result = await Process.run(
+        'powershell.exe',
+        ['-Command', 'Start-Process', '-FilePath', '"$exePath"'],
         runInShell: true,
       );
       
-      debugPrint('EasyEEG_BCI.exe launched successfully');
-      
-      // Give the process a moment to start
-      await Future.delayed(const Duration(milliseconds: 500));
-      
-      return true;
+      if (result.exitCode == 0) {
+        debugPrint('EasyEEG_BCI.exe launched successfully');
+        return true;
+      } else {
+        debugPrint('Error launching EasyEEG_BCI.exe: Exit code ${result.exitCode}');
+        if (result.stderr.isNotEmpty) {
+          debugPrint('Error output: ${result.stderr}');
+        }
+        return false;
+      }
     } catch (e) {
       debugPrint('Error launching EasyEEG_BCI.exe: $e');
       // Don't block app startup even if external app fails to launch
