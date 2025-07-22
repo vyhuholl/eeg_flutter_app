@@ -98,7 +98,29 @@ class ExeManager {
       }
     } catch (e) {
       debugPrint('Error launching EasyEEG_BCI.exe: $e');
-      // Don't block app startup even if external app fails to launch
+      return false;
+    }
+  }
+
+  static Future<bool> _isProcessRunning(String processName) async {
+    if (!Platform.isWindows) {
+      return false; // Not applicable on non-Windows
+    }
+
+    try {
+      final result = await Process.run(
+        'powershell.exe',
+        ['-Command', 'Get-Process', '-Name', processName],
+        runInShell: true,
+      );
+
+      if (result.exitCode == 0) {
+        return true;
+      } else {
+        return false;
+      }
+    } catch (e) {
+      debugPrint('Error checking process $processName: $e');
       return false;
     }
   }
@@ -108,21 +130,7 @@ void main() async {
   // Ensure Flutter binding is initialized for async operations
   WidgetsFlutterBinding.ensureInitialized();
   
-  try {
-    debugPrint('Attempting to launch EasyEEG_BCI.exe...');
-    final launched = await ExeManager.launchExternalApp();
-    
-    if (launched) {
-      debugPrint('EasyEEG_BCI.exe launched successfully, starting Flutter app');
-    } else {
-      debugPrint('EasyEEG_BCI.exe launch failed, continuing with Flutter app');
-    }
-  } catch (e) {
-    debugPrint('Error during external app launch: $e');
-    debugPrint('Continuing with Flutter app startup');
-  }
-  
-  // Start the Flutter application
+  // Start the Flutter application with splash screen
   runApp(const EEGApp());
 }
 
@@ -159,8 +167,170 @@ class EEGApp extends StatelessWidget {
           visualDensity: VisualDensity.adaptivePlatformDensity,
           useMaterial3: true,
         ),
-        home: const MainScreen(),
+        home: const SplashScreen(), // Start with splash screen
         debugShowCheckedModeBanner: false,
+      ),
+    );
+  }
+}
+
+class SplashScreen extends StatefulWidget {
+  const SplashScreen({super.key});
+
+  @override
+  State<SplashScreen> createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<SplashScreen> {
+  String _statusMessage = 'Initializing EEG System...';
+  bool _isError = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _launchExternalAppAndNavigate();
+  }
+
+  Future<void> _launchExternalAppAndNavigate() async {
+    try {
+      setState(() {
+        _statusMessage = 'Checking EasyEEG_BCI.exe...';
+        _isError = false;
+      });
+
+      // Check if already running first
+      final isAlreadyRunning = await ExeManager._isProcessRunning('EasyEEG_BCI');
+      if (isAlreadyRunning) {
+        setState(() {
+          _statusMessage = 'EasyEEG_BCI.exe already running. Starting app...';
+        });
+        await Future.delayed(const Duration(milliseconds: 1000));
+        _navigateToMainApp();
+        return;
+      }
+
+      setState(() {
+        _statusMessage = 'Extracting EasyEEG_BCI.exe...';
+      });
+
+      final launched = await ExeManager.launchExternalApp();
+      
+      if (launched) {
+        setState(() {
+          _statusMessage = 'Verifying EasyEEG_BCI.exe startup...';
+        });
+        
+        // Wait a bit longer and verify the process is actually running
+        await Future.delayed(const Duration(milliseconds: 2000));
+        
+        final isRunning = await ExeManager._isProcessRunning('EasyEEG_BCI');
+        if (isRunning) {
+          setState(() {
+            _statusMessage = 'EasyEEG_BCI.exe confirmed running. Starting app...';
+          });
+          await Future.delayed(const Duration(milliseconds: 1000));
+          _navigateToMainApp();
+        } else {
+          setState(() {
+            _statusMessage = 'Error: EasyEEG_BCI.exe failed to start properly';
+            _isError = true;
+          });
+        }
+      } else {
+        setState(() {
+          _statusMessage = 'Error: Failed to launch EasyEEG_BCI.exe';
+          _isError = true;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _statusMessage = 'Error during startup: $e';
+        _isError = true;
+      });
+      debugPrint('Error during external app launch: $e');
+    }
+  }
+
+  void _navigateToMainApp() {
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (context) => const MainScreen(),
+      ),
+    );
+  }
+
+  void _retryLaunch() {
+    setState(() {
+      _statusMessage = 'Retrying...';
+      _isError = false;
+    });
+    _launchExternalAppAndNavigate();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // EEG Icon or Logo
+            Icon(
+              Icons.psychology,
+              size: 80,
+              color: _isError ? Colors.red : Colors.blue,
+            ),
+            const SizedBox(height: 30),
+            
+            // Title
+            const Text(
+              'EEG Monitor',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 20),
+            
+            // Status message
+            Text(
+              _statusMessage,
+              style: TextStyle(
+                color: _isError ? Colors.red : Colors.white70,
+                fontSize: 16,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 30),
+            
+            // Loading indicator or retry button
+            if (!_isError) ...[
+              const CircularProgressIndicator(
+                color: Colors.blue,
+              ),
+            ] else ...[
+              ElevatedButton(
+                onPressed: _retryLaunch,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                ),
+                child: const Text('Retry Launch'),
+              ),
+              const SizedBox(height: 20),
+              TextButton(
+                onPressed: _navigateToMainApp,
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.white70,
+                ),
+                child: const Text('Continue Without External App'),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
