@@ -341,7 +341,7 @@ class EEGChart extends StatelessWidget {
     }
 
     final now = DateTime.now();
-    final timeSinceConnection = now.difference(connectionStartTime).inSeconds.toDouble();
+    final timeSinceConnection = now.difference(connectionStartTime).inMilliseconds.toDouble() / 1000.0;
     
     if (timeSinceConnection <= 120) {
       // Show from connection start to current time
