@@ -40,6 +40,7 @@ dependencies:
   
   # File operations
   path_provider: ^2.1.1
+  path: ^1.8.3
   
   # Real-time charting for EEG visualization
   fl_chart: ^0.66.0

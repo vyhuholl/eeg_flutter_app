@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as path;
 import '../widgets/eeg_chart.dart';
 import '../providers/eeg_data_provider.dart';
 import '../models/eeg_data.dart';
@@ -180,7 +181,7 @@ class _MeditationScreenState extends State<MeditationScreen> {
     try {
       // Get the application documents directory
       final directory = await getApplicationDocumentsDirectory();
-      final csvPath = '${directory.path}/EEG_samples.csv';
+      final csvPath = path.join(directory.path, 'EEG_samples.csv');
       
       _csvFile = File(csvPath);
       
