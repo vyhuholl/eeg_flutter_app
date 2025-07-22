@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/eeg_data_provider.dart';
 import '../providers/connection_provider.dart';
 import '../widgets/eeg_chart.dart';
-import 'meditation_screen.dart';
+import 'meditation_selection_screen.dart';
 
 /// Main screen of the EEG Flutter app with start screen and EEG chart
 class MainScreen extends StatefulWidget {
@@ -288,10 +288,10 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   void _startMeditationTraining() {
-    // Navigate to meditation screen
+    // Navigate to meditation selection screen
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => const MeditationScreen(),
+        builder: (context) => const MeditationSelectionScreen(),
       ),
     );
   }

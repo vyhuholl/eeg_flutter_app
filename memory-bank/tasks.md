@@ -3036,3 +3036,73 @@ The start screen now follows this visual hierarchy:
 ### Next: READY FOR VERIFICATION OR NEW TASK
 
 ---
+
+# EEG Flutter App - Second Meditation Screen Implementation
+
+## LEVEL 1 TASK: Second Meditation Screen Implementation
+
+### Task Summary
+Implement a second meditation screen that appears after clicking "Пройти тренинг медитации" button, providing two meditation options: "Расслабление" (Relaxation) and "Концентрация" (Concentration), with different behaviors and visual feedback based on different EEG metrics.
+
+### Description
+Create an intermediary meditation selection screen and modify the existing meditation functionality:
+
+**New Screen Requirements:**
+- Appears after user clicks "Пройти тренинг медитации" button
+- Two buttons: "Расслабление" (green color: 0xFF32D74B) and "Концентрация" (violet color: 0xFFBF5AF2)
+- Navigate to appropriate meditation mode based on user selection
+
+**Concentration Meditation (Current Implementation):**
+- Works exactly as currently implemented
+- Circle size based on Pope value
+- Shows graphs in debug mode
+- Text: "Чем больше вы сконцентрированы, тем больше диаметр круга"
+
+**Relaxation Meditation (New Implementation):**
+- No graphs shown even in debug mode
+- Circle size changes proportionally to `rab` value (alpha/beta ratio)
+- Text: "Чем больше вы расслаблены, тем больше диаметр круга"
+- Same timer and basic functionality as concentration meditation
+
+### Implementation Checklist
+- [x] Create new meditation selection screen
+- [x] Add enum for meditation types (concentration/relaxation)
+- [x] Modify main screen navigation to go to selection screen
+- [x] Update existing meditation screen to handle both modes
+- [x] Implement relaxation mode circle animation based on rab value
+- [x] Hide graphs in relaxation mode regardless of debug setting
+- [x] Update instruction text based on meditation mode
+- [x] Test compilation and navigation flow
+
+### Files to Modify
+- `lib/screens/main_screen.dart` - Update navigation
+- `lib/screens/meditation_screen.dart` - Add mode support
+- Create new `lib/screens/meditation_selection_screen.dart`
+
+### Status: ✅ COMPLETED
+
+### 🎯 RESULT - TASK COMPLETED SUCCESSFULLY
+
+**The second meditation screen has been successfully implemented with a selection interface that allows users to choose between "Расслабление" (Relaxation) and "Концентрация" (Concentration) meditation modes. Each mode provides appropriate biometric feedback with the relaxation mode using rab values for circle animation and hiding all graphs even in debug mode.**
+
+### Key Achievements:
+1. **Meditation Selection Screen**: Created intuitive interface with green/violet color-coded buttons
+2. **Dual Meditation Modes**: Concentration (Pope-based) and Relaxation (rab-based) modes implemented
+3. **Mode-Specific Behavior**: Different instruction text and biometric feedback for each mode
+4. **Debug Mode Override**: Relaxation mode correctly hides graphs even in debug mode
+5. **Navigation Flow**: Smooth flow from main screen → selection → meditation with proper type handling
+6. **Backward Compatibility**: Existing concentration meditation functionality fully preserved
+
+### Technical Benefits:
+- **Clean Architecture**: Enum-based meditation type system with mode-specific logic
+- **Performance Maintained**: Same sliding window optimizations applied to both modes
+- **Code Reusability**: Generalized calculation methods handle both Pope and rab values
+- **Extensible Design**: Easy to add additional meditation types in the future
+
+### User Experience Enhancement:
+- **Clear Choice**: Users can easily select their preferred meditation type
+- **Appropriate Feedback**: Each mode provides relevant biometric indicators
+- **Consistent Design**: Color-coded interface maintains visual coherence
+- **Flexible Usage**: Two distinct meditation experiences from the same application
+
+---

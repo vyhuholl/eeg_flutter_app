@@ -8,10 +8,16 @@ import 'package:path/path.dart' as path;
 import '../widgets/eeg_chart.dart';
 import '../providers/eeg_data_provider.dart';
 import '../models/eeg_data.dart';
+import 'meditation_selection_screen.dart';
 
 /// Meditation screen with timer and visual elements
 class MeditationScreen extends StatefulWidget {
-  const MeditationScreen({super.key});
+  final MeditationType meditationType;
+  
+  const MeditationScreen({
+    super.key,
+    this.meditationType = MeditationType.concentration,
+  });
 
   @override
   State<MeditationScreen> createState() => _MeditationScreenState();
@@ -22,8 +28,8 @@ class _MeditationScreenState extends State<MeditationScreen> {
   late Timer _animationTimer;
   int _seconds = 0;
   
-  // Pope value tracking for circle animation
-  double? _baselinePope;
+  // Value tracking for circle animation (Pope for concentration, RAB for relaxation)
+  double? _baselineValue;
   double _currentCircleSize = 250.0;
   bool _isBaselineRecorded = false;
   
@@ -32,11 +38,11 @@ class _MeditationScreenState extends State<MeditationScreen> {
   bool _isCsvLogging = false;
   StreamSubscription<List<EEGJsonSample>>? _csvDataSubscription;
   
-  // Sliding window state for O(n) Pope value calculation
-  final List<EEGJsonSample> _popeWindow = [];
-  double _popeRunningSum = 0.0;
-  int _validPopeCount = 0;
-  static const int _popeWindowDurationMs = 10 * 1000; // 10 seconds
+  // Sliding window state for O(n) value calculation
+  final List<EEGJsonSample> _valueWindow = [];
+  double _valueRunningSum = 0.0;
+  int _validValueCount = 0;
+  static const int _valueWindowDurationMs = 10 * 1000; // 10 seconds
 
   @override
   void initState() {
@@ -55,9 +61,9 @@ class _MeditationScreenState extends State<MeditationScreen> {
     _stopCsvLogging();
     
     // Clean up sliding window state
-    _popeWindow.clear();
-    _popeRunningSum = 0.0;
-    _validPopeCount = 0;
+    _valueWindow.clear();
+    _valueRunningSum = 0.0;
+    _validValueCount = 0;
     
     super.dispose();
   }
@@ -101,17 +107,17 @@ class _MeditationScreenState extends State<MeditationScreen> {
 
   void _updateCircleAnimation() {
     final eegProvider = Provider.of<EEGDataProvider>(context, listen: false);
-    final currentPope = _calculateCurrentPopeValue(eegProvider);
+    final currentValue = _calculateCurrentValue(eegProvider);
     
-    // Record baseline Pope value on first calculation
-    if (!_isBaselineRecorded && currentPope > 0.0) {
-      _baselinePope = currentPope;
+    // Record baseline value on first calculation
+    if (!_isBaselineRecorded && currentValue > 0.0) {
+      _baselineValue = currentValue;
       _isBaselineRecorded = true;
     }
     
     // Update circle size if we have a baseline
-    if (_isBaselineRecorded && _baselinePope != null) {
-      final newSize = _calculateCircleSize(currentPope, _baselinePope!);
+    if (_isBaselineRecorded && _baselineValue != null) {
+      final newSize = _calculateCircleSize(currentValue, _baselineValue!);
       if ((newSize - _currentCircleSize).abs() > 1.0) {
         setState(() {
           _currentCircleSize = newSize;
@@ -120,13 +126,13 @@ class _MeditationScreenState extends State<MeditationScreen> {
     }
   }
 
-  double _calculateCurrentPopeValue(EEGDataProvider eegProvider) {
+  double _calculateCurrentValue(EEGDataProvider eegProvider) {
     final jsonSamples = eegProvider.dataProcessor.getLatestJsonSamples();
     
     if (jsonSamples.isEmpty) return 0.0;
     
     final currentTime = DateTime.now().millisecondsSinceEpoch;
-    final windowStartTime = currentTime - _popeWindowDurationMs;
+    final windowStartTime = currentTime - _valueWindowDurationMs;
     
     // Add new samples to sliding window
     for (final sample in jsonSamples) {
@@ -134,41 +140,43 @@ class _MeditationScreenState extends State<MeditationScreen> {
       
       // Only process samples that are within our time window and not already in window
       if (sampleTime >= windowStartTime && 
-          (_popeWindow.isEmpty || sampleTime > _popeWindow.last.absoluteTimestamp.millisecondsSinceEpoch)) {
-        _popeWindow.add(sample);
+          (_valueWindow.isEmpty || sampleTime > _valueWindow.last.absoluteTimestamp.millisecondsSinceEpoch)) {
+        _valueWindow.add(sample);
         
-        // Add to running sum if valid Pope value
-        if (sample.pope != 0.0) {
-          _popeRunningSum += sample.pope;
-          _validPopeCount++;
+        // Add to running sum based on meditation type
+        final value = widget.meditationType == MeditationType.concentration ? sample.pope : sample.rab;
+        if (value != 0.0) {
+          _valueRunningSum += value;
+          _validValueCount++;
         }
       }
     }
     
     // Remove samples that fall outside the 10-second window
-    while (_popeWindow.isNotEmpty && 
-           _popeWindow.first.absoluteTimestamp.millisecondsSinceEpoch < windowStartTime) {
-      final removedSample = _popeWindow.removeAt(0);
+    while (_valueWindow.isNotEmpty && 
+           _valueWindow.first.absoluteTimestamp.millisecondsSinceEpoch < windowStartTime) {
+      final removedSample = _valueWindow.removeAt(0);
       
-      // Remove from running sum if it was a valid Pope value
-      if (removedSample.pope != 0.0) {
-        _popeRunningSum -= removedSample.pope;
-        _validPopeCount--;
+      // Remove from running sum based on meditation type
+      final value = widget.meditationType == MeditationType.concentration ? removedSample.pope : removedSample.rab;
+      if (value != 0.0) {
+        _valueRunningSum -= value;
+        _validValueCount--;
       }
     }
     
     // Calculate moving average
-    return _validPopeCount > 0 ? _popeRunningSum / _validPopeCount : 0.0;
+    return _validValueCount > 0 ? _valueRunningSum / _validValueCount : 0.0;
   }
 
-  double _calculateCircleSize(double currentPope, double baselinePope) {
+  double _calculateCircleSize(double currentValue, double baselineValue) {
     const double baseSize = 250.0;
     const double maxSize = 500.0;
     const double minSize = 50.0;
     
     // Calculate proportional change
-    final popeRatio = baselinePope != 0.0 ? currentPope / baselinePope : 1.0;
-    final newSize = baseSize * popeRatio;
+    final valueRatio = baselineValue != 0.0 ? currentValue / baselineValue : 1.0;
+    final newSize = baseSize * valueRatio;
     
     // Apply constraints
     return newSize.clamp(minSize, maxSize);
@@ -337,6 +345,23 @@ class _MeditationScreenState extends State<MeditationScreen> {
   }
 
   Widget _buildCenterContent() {
+    // For relaxation meditation: always show only circle (no graphs even in debug mode)
+    if (widget.meditationType == MeditationType.relaxation) {
+      return Center(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.easeInOut,
+          width: _currentCircleSize,
+          height: _currentCircleSize,
+          child: Image.asset(
+            'assets/images/circle.png',
+            fit: BoxFit.contain,
+          ),
+        ),
+      );
+    }
+    
+    // For concentration meditation: show charts in debug mode
     if (kDebugMode) {
       // Debug mode: show circle + enhanced EEG chart side by side
       return Row(
@@ -423,10 +448,12 @@ class _MeditationScreenState extends State<MeditationScreen> {
                   const SizedBox(height: 20),
                   
                   // Instructional text
-                  const Text(
-                    'Чем больше вы сконцентрированы, тем больше диаметр круга',
+                  Text(
+                    widget.meditationType == MeditationType.concentration
+                        ? 'Чем больше вы сконцентрированы, тем больше диаметр круга'
+                        : 'Чем больше вы расслаблены, тем больше диаметр круга',
                     textAlign: TextAlign.center,
-                    style: TextStyle(
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 14,
                     ),
