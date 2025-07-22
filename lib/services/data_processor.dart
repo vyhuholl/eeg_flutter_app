@@ -14,7 +14,6 @@ class EEGDataProcessor {
   // Chart data for visualization
   final Map<int, List<FlSpot>> _chartData = {};
   final List<FlSpot> _eegTimeSeriesData = [];
-  final int _timeWindowSeconds = 120; // Show last 120 seconds of data
   
   EEGDataProcessor({required EEGConfig config}) 
     : _config = config,
@@ -32,7 +31,7 @@ class EEGDataProcessor {
   void processJsonSample(EEGJsonSample sample) {
     _jsonBuffer.add(sample);
     _updateEEGTimeSeriesData(sample);
-    _processedJsonDataController.add(_jsonBuffer.getLatest(100));
+    _processedJsonDataController.add(_jsonBuffer.getAll());
   }
 
   /// Update EEG time series data for JSON samples
@@ -40,9 +39,10 @@ class EEGDataProcessor {
     final timestamp = sample.absoluteTimestamp.millisecondsSinceEpoch.toDouble();
     _eegTimeSeriesData.add(FlSpot(timestamp, sample.eegValue));
     
-    // Remove data older than the time window (120 seconds)
-    final cutoffTime = DateTime.now().millisecondsSinceEpoch - (_timeWindowSeconds * 1000);
-    _eegTimeSeriesData.removeWhere((spot) => spot.x < cutoffTime);
+    // Limit the size to prevent unbounded growth (keep same number as buffer)
+    if (_eegTimeSeriesData.length > _config.bufferSize) {
+      _eegTimeSeriesData.removeAt(0);
+    }
   }
 
   /// Get chart data for specific channel
@@ -50,10 +50,9 @@ class EEGDataProcessor {
     return _chartData[channel] ?? [];
   }
 
-  /// Get EEG time series data filtered to last 120 seconds
+  /// Get EEG time series data (chart handles time window filtering)
   List<FlSpot> get eegTimeSeriesData {
-    final cutoffTime = DateTime.now().millisecondsSinceEpoch - (_timeWindowSeconds * 1000);
-    return _eegTimeSeriesData.where((spot) => spot.x >= cutoffTime).toList();
+    return _eegTimeSeriesData;
   }
 
   /// Start periodic processing (if needed)
@@ -98,9 +97,15 @@ class EEGDataProcessor {
     return value; // Placeholder - implement actual filtering if needed
   }
 
-  /// Get latest JSON samples
-  List<EEGJsonSample> getLatestJsonSamples([int count = 100]) {
-    return _jsonBuffer.getLatest(count);
+  /// Get latest JSON samples (defaults to all available data up to 120 seconds worth)
+  List<EEGJsonSample> getLatestJsonSamples([int? count]) {
+    if (count != null) {
+      return _jsonBuffer.getLatest(count);
+    }
+    
+    // If count not specified, return all available data (limited by buffer size)
+    // This ensures we get the maximum available data for the time window
+    return _jsonBuffer.getAll();
   }
 
   /// Clear all data

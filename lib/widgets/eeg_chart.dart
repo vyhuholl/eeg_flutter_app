@@ -13,6 +13,14 @@ class YAxisRange {
   const YAxisRange({required this.min, required this.max});
 }
 
+/// X-axis range for time window control
+class XAxisRange {
+  final double min;
+  final double max;
+
+  const XAxisRange({required this.min, required this.max});
+}
+
 /// Chart modes for different screens
 enum EEGChartMode {
   main,       // Main screen with focus + relaxation lines
@@ -66,9 +74,15 @@ class EEGChart extends StatelessWidget {
 
     // Calculate adaptive Y-axis range
     final yAxisRange = _calculateAdaptiveYRange(lineChartData);
+    
+    // Calculate X-axis range for 120-second window
+    final connectionStartTime = connectionProvider.connectionStartTime;
+    final xAxisRange = _calculateXAxisRange(connectionStartTime);
 
     return LineChartData(
       lineBarsData: lineChartData,
+      minX: xAxisRange.min,
+      maxX: xAxisRange.max,
       minY: yAxisRange.min,
       maxY: yAxisRange.max,
       titlesData: showAxes ? _buildTitlesData() : const FlTitlesData(show: false),
@@ -322,6 +336,24 @@ class EEGChart extends StatelessWidget {
       min: minY - padding,
       max: maxY + padding,
     );
+  }
+
+  /// Calculate X-axis range for 120-second time window
+  XAxisRange _calculateXAxisRange(DateTime? connectionStartTime) {
+    if (connectionStartTime == null) {
+      return const XAxisRange(min: 0, max: 120);
+    }
+
+    final now = DateTime.now();
+    final timeSinceConnection = now.difference(connectionStartTime).inSeconds.toDouble();
+    
+    if (timeSinceConnection <= 120) {
+      // Show from connection start to current time
+      return XAxisRange(min: 0, max: timeSinceConnection.clamp(10, 120)); // Min 10 seconds for visibility
+    } else {
+      // Show sliding 120-second window
+      return XAxisRange(min: timeSinceConnection - 120, max: timeSinceConnection);
+    }
   }
 
   LineChartData _buildEmptyChart() {

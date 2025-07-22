@@ -285,7 +285,7 @@ class EEGConfig {
     required this.sampleRate,
     required this.deviceAddress,
     required this.devicePort,
-    this.bufferSize = 1000,
+    this.bufferSize = 30000, // Default to 120 seconds at 250Hz (120 * 250 = 30,000)
   });
 
   factory EEGConfig.defaultConfig() {
@@ -293,6 +293,7 @@ class EEGConfig {
       sampleRate: 250,
       deviceAddress: '0.0.0.0',
       devicePort: 2000,
+      bufferSize: 30000, // 120 seconds * 250 samples/second = 30,000 samples
     );
   }
 }
