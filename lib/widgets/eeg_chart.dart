@@ -157,38 +157,51 @@ class EEGChart extends StatelessWidget {
     return lines;
   }
 
-  /// Calculate 10-second moving average for focus values using relative time
+  /// Calculate 10-second moving average for focus values using O(n) sliding window approach
   List<FlSpot> _calculateFocusMovingAverage(List<EEGJsonSample> samples, DateTime connectionStartTime) {
     final focusData = <FlSpot>[];
     const movingAverageWindowMs = 10 * 1000; // 10 seconds in milliseconds
+    
+    if (samples.isEmpty) return focusData;
+    
+    // Sliding window variables for O(n) complexity
+    double runningSum = 0.0;
+    int validSamplesCount = 0;
+    int windowStart = 0;
     
     for (int i = 0; i < samples.length; i++) {
       final currentSample = samples[i];
       final currentTimestamp = currentSample.absoluteTimestamp.millisecondsSinceEpoch.toDouble();
       final relativeTimeSeconds = currentSample.absoluteTimestamp.difference(connectionStartTime).inMilliseconds.toDouble() / 1000.0;
       
-      // Calculate current focus value
-      if (currentSample.pope == 0.0) continue; // Skip if division by zero
+      // Skip samples with invalid Pope values
+      if (currentSample.pope == 0.0) continue;
       
-      // Collect focus values from the last 10 seconds
+      // Add current sample to window
+      runningSum += currentSample.pope;
+      validSamplesCount++;
+      
+      // Remove samples that fall outside the 10-second window
       final windowStartTime = currentTimestamp - movingAverageWindowMs;
-      final focusValues = <double>[];
-      
-      for (int j = 0; j <= i; j++) {
-        final sample = samples[j];
-        final sampleTimestamp = sample.absoluteTimestamp.millisecondsSinceEpoch.toDouble();
+      while (windowStart <= i) {
+        final windowSample = samples[windowStart];
+        final windowSampleTimestamp = windowSample.absoluteTimestamp.millisecondsSinceEpoch.toDouble();
         
-        // Only include samples within the 10-second window
-        if (sampleTimestamp >= windowStartTime) {
-          if (sample.pope != 0.0) {
-            focusValues.add(sample.pope);
-          }
+        if (windowSampleTimestamp >= windowStartTime) {
+          break; // This sample is still within the window
         }
+        
+        // Remove this sample from the running calculation
+        if (windowSample.pope != 0.0) {
+          runningSum -= windowSample.pope;
+          validSamplesCount--;
+        }
+        windowStart++;
       }
       
-      // Calculate moving average if we have enough data
-      if (focusValues.isNotEmpty) {
-        final average = focusValues.reduce((a, b) => a + b) / focusValues.length;
+      // Calculate moving average if we have valid data
+      if (validSamplesCount > 0) {
+        final average = runningSum / validSamplesCount;
         focusData.add(FlSpot(relativeTimeSeconds, average));
       }
     }

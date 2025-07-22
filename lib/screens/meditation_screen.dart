@@ -32,6 +32,12 @@ class _MeditationScreenState extends State<MeditationScreen> {
   File? _csvFile;
   bool _isCsvLogging = false;
   StreamSubscription<List<EEGJsonSample>>? _csvDataSubscription;
+  
+  // Sliding window state for O(n) Pope value calculation
+  final List<EEGJsonSample> _popeWindow = [];
+  double _popeRunningSum = 0.0;
+  int _validPopeCount = 0;
+  static const int _popeWindowDurationMs = 10 * 1000; // 10 seconds
 
   @override
   void initState() {
@@ -48,6 +54,12 @@ class _MeditationScreenState extends State<MeditationScreen> {
     _timer.cancel();
     _animationTimer.cancel();
     _stopCsvLogging();
+    
+    // Clean up sliding window state
+    _popeWindow.clear();
+    _popeRunningSum = 0.0;
+    _validPopeCount = 0;
+    
     super.dispose();
   }
 
@@ -114,24 +126,40 @@ class _MeditationScreenState extends State<MeditationScreen> {
     
     if (jsonSamples.isEmpty) return 0.0;
     
-    // Filter to last 10 seconds
-    final cutoffTime = DateTime.now().millisecondsSinceEpoch - (10 * 1000);
-    final recentSamples = jsonSamples.where((sample) => 
-      sample.absoluteTimestamp.millisecondsSinceEpoch >= cutoffTime).toList();
+    final currentTime = DateTime.now().millisecondsSinceEpoch;
+    final windowStartTime = currentTime - _popeWindowDurationMs;
     
-    if (recentSamples.isEmpty) return 0.0;
-    
-    // Calculate 10-second moving average of beta / (theta + alpha)
-    final popeValues = <double>[];
-    for (final sample in recentSamples) {
-      if (sample.pope != 0.0) {
-        popeValues.add(sample.pope);
+    // Add new samples to sliding window
+    for (final sample in jsonSamples) {
+      final sampleTime = sample.absoluteTimestamp.millisecondsSinceEpoch;
+      
+      // Only process samples that are within our time window and not already in window
+      if (sampleTime >= windowStartTime && 
+          (_popeWindow.isEmpty || sampleTime > _popeWindow.last.absoluteTimestamp.millisecondsSinceEpoch)) {
+        _popeWindow.add(sample);
+        
+        // Add to running sum if valid Pope value
+        if (sample.pope != 0.0) {
+          _popeRunningSum += sample.pope;
+          _validPopeCount++;
+        }
       }
     }
     
-    return popeValues.isNotEmpty 
-      ? popeValues.reduce((a, b) => a + b) / popeValues.length 
-      : 0.0;
+    // Remove samples that fall outside the 10-second window
+    while (_popeWindow.isNotEmpty && 
+           _popeWindow.first.absoluteTimestamp.millisecondsSinceEpoch < windowStartTime) {
+      final removedSample = _popeWindow.removeAt(0);
+      
+      // Remove from running sum if it was a valid Pope value
+      if (removedSample.pope != 0.0) {
+        _popeRunningSum -= removedSample.pope;
+        _validPopeCount--;
+      }
+    }
+    
+    // Calculate moving average
+    return _validPopeCount > 0 ? _popeRunningSum / _validPopeCount : 0.0;
   }
 
   double _calculateCircleSize(double currentPope, double baselinePope) {
