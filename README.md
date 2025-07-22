@@ -1,16 +1,17 @@
 # eeg_flutter_app
-
-A new Flutter project.
-
-## Getting Started
-
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+An interface for the [EasyEEG BCI](https://labdata.ru/news/easyeeg-bci) device. Shows your focus and relaxation levels. Currently works only on Windows.
+## Cloning
+```bash
+git lfs install
+git clone https://github.com/vyhuholl/eeg_flutter_app.git
+```
+## Build
+### Debug mode
+```bash
+flutter build windows --debug
+```
+In debug mode app saves the data received from device to CSV files. Original data from device is stored in the "C:\Users\username\AppData\Local\eeg_flutter_app" folder, processed data from the app --- in the Documents folder.
+### Release mode
+```
+flutter build windows
+```
