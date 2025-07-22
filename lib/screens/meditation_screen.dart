@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:path_provider/path_provider.dart';
@@ -20,9 +21,6 @@ class _MeditationScreenState extends State<MeditationScreen> {
   late Timer _timer;
   late Timer _animationTimer;
   int _seconds = 0;
-  
-  // Debug mode to control EEG chart visibility
-  bool isDebugModeOn = true;
   
   // Pope value tracking for circle animation
   double? _baselinePope;
@@ -45,7 +43,7 @@ class _MeditationScreenState extends State<MeditationScreen> {
     super.initState();
     _startTimer();
     _startAnimationTimer();
-    if (isDebugModeOn) {
+    if (kDebugMode) {
       _initializeCsvLogging();
     }
   }
@@ -72,7 +70,7 @@ class _MeditationScreenState extends State<MeditationScreen> {
         if (_seconds >= 300) {
           _timer.cancel();
           // Stop CSV logging when timer ends
-          if (isDebugModeOn) {
+          if (kDebugMode) {
             _stopCsvLogging();
           }
         }
@@ -88,7 +86,7 @@ class _MeditationScreenState extends State<MeditationScreen> {
   }
 
   void _endMeditation() {
-    if (isDebugModeOn) {
+    if (kDebugMode) {
       _stopCsvLogging();
     }
     // Navigate back to start screen
@@ -339,7 +337,7 @@ class _MeditationScreenState extends State<MeditationScreen> {
   }
 
   Widget _buildCenterContent() {
-    if (isDebugModeOn) {
+    if (kDebugMode) {
       // Debug mode: show circle + enhanced EEG chart side by side
       return Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
