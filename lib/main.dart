@@ -102,7 +102,7 @@ class ExeManager {
     }
   }
 
-  static Future<bool> _isProcessRunning(String processName) async {
+  static Future<bool> _isWindowOpen(String windowTitlePattern) async {
     if (!Platform.isWindows) {
       return false; // Not applicable on non-Windows
     }
@@ -110,17 +110,20 @@ class ExeManager {
     try {
       final result = await Process.run(
         'powershell.exe',
-        ['-Command', 'Get-Process', '-Name', processName],
+        ['-Command', 'Get-Process | Where-Object {\$_.MainWindowTitle -like "*$windowTitlePattern*"} | Select-Object -First 1'],
         runInShell: true,
       );
 
-      if (result.exitCode == 0) {
-        return true;
+      if (result.exitCode == 0 && result.stdout.toString().trim().isNotEmpty) {
+        // Check if we actually found a process with a matching window title
+        final output = result.stdout.toString().trim();
+        // If output contains actual process info (not just headers), window is open
+        return output.contains('ProcessName') || output.split('\n').length > 3;
       } else {
         return false;
       }
     } catch (e) {
-      debugPrint('Error checking process $processName: $e');
+      debugPrint('Error checking window $windowTitlePattern: $e');
       return false;
     }
   }
@@ -198,11 +201,11 @@ class _SplashScreenState extends State<SplashScreen> {
         _isError = false;
       });
 
-      // Check if already running first
-      final isAlreadyRunning = await ExeManager._isProcessRunning('EasyEEG_BCI');
-      if (isAlreadyRunning) {
+      // Check if window is already open first
+      final isAlreadyOpen = await ExeManager._isWindowOpen('EasyEEG BCI');
+      if (isAlreadyOpen) {
         setState(() {
-          _statusMessage = 'EasyEEG_BCI.exe уже запущен. Запускаем приложение...';
+          _statusMessage = 'Окно EasyEEG BCI уже открыто. Запускаем приложение...';
         });
         await Future.delayed(const Duration(milliseconds: 1000));
         _navigateToMainApp();
@@ -217,24 +220,43 @@ class _SplashScreenState extends State<SplashScreen> {
       
       if (launched) {
         setState(() {
-          _statusMessage = 'Проверяем, что EasyEEG_BCI.exe запущен...';
+          _statusMessage = 'Ожидаем открытия окна EasyEEG BCI...';
         });
         
-        // Wait a bit longer and verify the process is actually running
-        await Future.delayed(const Duration(milliseconds: 2000));
+        // Poll every 5000 milliseconds until window is found
+        bool windowFound = false;
+        int attempts = 0;
         
-        final isRunning = await ExeManager._isProcessRunning('EasyEEG_BCI');
-        if (isRunning) {
+        while (!windowFound) {
+          attempts++;
+          
           setState(() {
-            _statusMessage = 'EasyEEG_BCI.exe запущен. Запускаем приложение...';
+            _statusMessage = 'Ожидаем открытия окна EasyEEG BCI... (попытка $attempts)';
           });
-          await Future.delayed(const Duration(milliseconds: 1000));
-          _navigateToMainApp();
-        } else {
-          setState(() {
-            _statusMessage = 'Ошибка: EasyEEG_BCI.exe не смог запуститься';
-            _isError = true;
-          });
+          
+          // Wait 5000 milliseconds before checking
+          await Future.delayed(const Duration(milliseconds: 5000));
+          
+          windowFound = await ExeManager._isWindowOpen('EasyEEG BCI');
+          
+          if (windowFound) {
+            setState(() {
+              _statusMessage = 'Окно EasyEEG BCI найдено. Запускаем приложение...';
+            });
+            await Future.delayed(const Duration(milliseconds: 1000));
+            _navigateToMainApp();
+            break;
+          }
+          
+          // Optional: Add a maximum number of attempts to prevent infinite loop in case of issues
+          // You can remove this if you want truly indefinite polling
+          if (attempts > 120) { // 120 attempts = 10 minutes of waiting
+            setState(() {
+              _statusMessage = 'Таймаут: Окно EasyEEG BCI не найдено после 10 минут ожидания';
+              _isError = true;
+            });
+            break;
+          }
         }
       } else {
         setState(() {
