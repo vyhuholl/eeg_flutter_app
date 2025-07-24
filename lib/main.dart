@@ -33,35 +33,6 @@ class ExeManager {
       return false;
     }
   }
-
-  static Future<String> extractAndGetExePath() async {
-    final appDir = Directory.current;
-    final exePath = path.join(appDir.path, 'EasyEEG_BCI.exe');
-
-    // Check if already extracted and up to date
-    if (File(exePath).existsSync()) {
-      await LoggerService.info('EasyEEG_BCI.exe already exists at: $exePath');
-      return exePath;
-    }
-    
-    try {
-      await LoggerService.info('Extracting EasyEEG_BCI.exe to: $exePath');
-      
-      // Extract executable from assets
-      final byteData = await rootBundle.load('assets/EasyEEG_BCI.exe');
-      final bytes = byteData.buffer.asUint8List();
-      
-      // Write to app directory
-      await File(exePath).writeAsBytes(bytes);
-
-      await LoggerService.info('EasyEEG_BCI.exe extracted successfully');
-
-      return exePath;
-    } catch (e) {
-      await LoggerService.error('Error extracting EasyEEG_BCI.exe: $e');
-      rethrow;
-    }
-  }
   
   static Future<bool> launchExternalApp() async {
     // Only attempt to launch on Windows platform
@@ -78,7 +49,8 @@ class ExeManager {
         // Continue with launch even if config creation fails
       }
       
-      final exePath = await extractAndGetExePath();
+      final appDir = Directory.current;
+      final exePath = path.join(appDir.path, 'EasyEEG_BCI.exe');
       
       // Verify the executable exists and is accessible
       final exeFile = File(exePath);
