@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../models/connection_state.dart';
 import '../models/eeg_data.dart';
 import '../services/udp_receiver.dart';
+import '../services/logger_service.dart';
 import 'eeg_data_provider.dart';
 
 /// Connection configuration for different data formats
@@ -137,7 +138,7 @@ class ConnectionProvider extends ChangeNotifier {
       final deviceAddress = _connectionConfig.deviceAddress;
       final devicePort = _connectionConfig.devicePort;
 
-      debugPrint('Connecting to EEG device at $deviceAddress:$devicePort');
+      await LoggerService.info('Connecting to EEG device at $deviceAddress:$devicePort');
       
       // Start EEG data stream
       _eegDataProvider.startDataStream();
@@ -148,14 +149,14 @@ class ConnectionProvider extends ChangeNotifier {
       _reconnectAttempts = 0;
       
     } catch (error) {
-      debugPrint('Connection error: $error');
+      await LoggerService.error('Connection error: $error');
       _updateConnectionState(ConnectionState.error(error.toString()));
     }
   }
 
   /// Disconnect from EEG device
   Future<void> disconnect() async {
-    debugPrint('Disconnecting from EEG device');
+    await LoggerService.info('Disconnecting from EEG device');
     
     // Stop EEG data stream
     _eegDataProvider.stopDataStream();
@@ -177,7 +178,7 @@ class ConnectionProvider extends ChangeNotifier {
     }
 
     _reconnectAttempts++;
-    debugPrint('Reconnection attempt $_reconnectAttempts/${_connectionConfig.maxReconnectAttempts}');
+    await LoggerService.info('Reconnection attempt $_reconnectAttempts/${_connectionConfig.maxReconnectAttempts}');
     
     await disconnect();
     await Future.delayed(Duration(seconds: _connectionConfig.reconnectDelay.toInt()));
@@ -203,7 +204,7 @@ class ConnectionProvider extends ChangeNotifier {
       // you might send a test packet or check network connectivity
       return _currentState.isConnected;
     } catch (error) {
-      debugPrint('Connection test failed: $error');
+      await LoggerService.error('Connection test failed: $error');
       return false;
     }
   }
@@ -221,8 +222,8 @@ class ConnectionProvider extends ChangeNotifier {
     }
   }
 
-  void _onConnectionError(error) {
-    debugPrint('Connection stream error: $error');
+  void _onConnectionError(error) async {
+    await LoggerService.error('Connection stream error: $error');
     _updateConnectionState(ConnectionState.error(error.toString()));
   }
 
@@ -233,8 +234,8 @@ class ConnectionProvider extends ChangeNotifier {
     _eegDataProvider.processJsonSample(sample);
   }
 
-  void _onDataError(error) {
-    debugPrint('EEG data error: $error');
+  void _onDataError(error) async {
+    await LoggerService.error('EEG data error: $error');
   }
 
   void _updateConnectionState(ConnectionState state) {

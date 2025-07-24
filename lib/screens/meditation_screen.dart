@@ -9,6 +9,7 @@ import '../widgets/eeg_chart.dart';
 import '../providers/eeg_data_provider.dart';
 import '../models/eeg_data.dart';
 import 'meditation_selection_screen.dart';
+import '../services/logger_service.dart';
 
 /// Meditation screen with timer and visual elements
 class MeditationScreen extends StatefulWidget {
@@ -200,7 +201,7 @@ class _MeditationScreenState extends State<MeditationScreen> {
       _isCsvLogging = true;
       _startCsvDataSubscription();
     } catch (e) {
-      debugPrint('Error initializing CSV logging: $e');
+      await LoggerService.error('Error initializing CSV logging: $e');
     }
   }
 
@@ -234,7 +235,7 @@ class _MeditationScreenState extends State<MeditationScreen> {
         await _csvFile!.writeAsString(csvData, mode: FileMode.append);
       }
     } catch (e) {
-      debugPrint('Error writing to CSV: $e');
+      await LoggerService.error('Error writing to CSV: $e');
     }
   }
 

@@ -8,6 +8,7 @@ import 'providers/eeg_data_provider.dart';
 import 'providers/connection_provider.dart';
 import 'screens/main_screen.dart';
 import 'models/eeg_data.dart';
+import 'services/logger_service.dart';
 
 class ExeManager {
   /// Creates EasyEEG_BCI.conf file in the current directory with contents from assets
@@ -17,7 +18,7 @@ class ExeManager {
       final currentDirectory = Directory.current;
       final configPath = path.join(currentDirectory.path, 'EasyEEG_BCI.conf');
       
-      debugPrint('Creating EasyEEG_BCI.conf at: $configPath');
+      await LoggerService.info('Creating EasyEEG_BCI.conf at: $configPath');
       
       // Read the configuration content from assets
       final configContent = await rootBundle.loadString('assets/EasyEEG_BCI.conf');
@@ -26,10 +27,10 @@ class ExeManager {
       final configFile = File(configPath);
       await configFile.writeAsString(configContent);
       
-      debugPrint('EasyEEG_BCI.conf created successfully');
+      await LoggerService.info('EasyEEG_BCI.conf created successfully');
       return true;
     } catch (e) {
-      debugPrint('Error creating EasyEEG_BCI.conf: $e');
+      await LoggerService.error('Error creating EasyEEG_BCI.conf: $e');
       return false;
     }
   }
@@ -61,12 +62,12 @@ class ExeManager {
 
     // Check if already extracted and up to date
     if (File(exePath).existsSync()) {
-      debugPrint('EasyEEG_BCI.exe already exists at: $exePath');
+      await LoggerService.info('EasyEEG_BCI.exe already exists at: $exePath');
       return exePath;
     }
     
     try {
-      debugPrint('Extracting EasyEEG_BCI.exe to: $exePath');
+      await LoggerService.info('Extracting EasyEEG_BCI.exe to: $exePath');
       
       // Extract executable from assets
       final byteData = await rootBundle.load('assets/EasyEEG_BCI.exe');
@@ -74,11 +75,12 @@ class ExeManager {
       
       // Write to app directory
       await File(exePath).writeAsBytes(bytes);
-      debugPrint('EasyEEG_BCI.exe extracted successfully');
+
+      await LoggerService.info('EasyEEG_BCI.exe extracted successfully');
 
       return exePath;
     } catch (e) {
-      debugPrint('Error extracting EasyEEG_BCI.exe: $e');
+      await LoggerService.error('Error extracting EasyEEG_BCI.exe: $e');
       rethrow;
     }
   }
@@ -86,7 +88,7 @@ class ExeManager {
   static Future<bool> launchExternalApp() async {
     // Only attempt to launch on Windows platform
     if (!Platform.isWindows) {
-      debugPrint('EasyEEG_BCI.exe launch skipped: Not Windows platform');
+      await LoggerService.info('EasyEEG_BCI.exe launch skipped: Not Windows platform');
       return true; // Return true for non-Windows to not block app startup
     }
     
@@ -94,7 +96,7 @@ class ExeManager {
       // First, create the configuration file in the current directory
       final configCreated = await createConfigFile();
       if (!configCreated) {
-        debugPrint('Warning: Failed to create EasyEEG_BCI.conf, but continuing with launch');
+        await LoggerService.warning('Warning: Failed to create EasyEEG_BCI.conf, but continuing with launch');
         // Continue with launch even if config creation fails
       }
       
@@ -103,11 +105,11 @@ class ExeManager {
       // Verify the executable exists and is accessible
       final exeFile = File(exePath);
       if (!exeFile.existsSync()) {
-        debugPrint('Error: EasyEEG_BCI.exe not found at: $exePath');
+        await LoggerService.error('Error: EasyEEG_BCI.exe not found at: $exePath');
         return false;
       }
       
-      debugPrint('Launching EasyEEG_BCI.exe from: $exePath');
+      await LoggerService.info('Launching EasyEEG_BCI.exe from: $exePath');
       
       // Launch the executable using Windows Start-Process (proper method for GUI apps)
       // This is equivalent to PowerShell's Start-Process command
@@ -118,17 +120,17 @@ class ExeManager {
       );
       
       if (result.exitCode == 0) {
-        debugPrint('EasyEEG_BCI.exe launched successfully');
+        await LoggerService.info('EasyEEG_BCI.exe launched successfully');
         return true;
       } else {
-        debugPrint('Error launching EasyEEG_BCI.exe: Exit code ${result.exitCode}');
+        await LoggerService.error('Error launching EasyEEG_BCI.exe: Exit code ${result.exitCode}');
         if (result.stderr.isNotEmpty) {
-          debugPrint('Error output: ${result.stderr}');
+          await LoggerService.error('Error output: ${result.stderr}');
         }
         return false;
       }
     } catch (e) {
-      debugPrint('Error launching EasyEEG_BCI.exe: $e');
+      await LoggerService.error('Error launching EasyEEG_BCI.exe: $e');
       return false;
     }
   }
@@ -154,7 +156,7 @@ class ExeManager {
         return false;
       }
     } catch (e) {
-      debugPrint('Error checking window $windowTitlePattern: $e');
+      await LoggerService.error('Error checking window $windowTitlePattern: $e');
       return false;
     }
   }
@@ -164,6 +166,9 @@ void main() async {
   // Ensure Flutter binding is initialized for async operations
   WidgetsFlutterBinding.ensureInitialized();
   
+  // Initialize logger early
+  await LoggerService.instance;
+
   // Start the Flutter application with setup instructions screen
   runApp(const EEGApp());
 }
@@ -398,7 +403,7 @@ class _SplashScreenState extends State<SplashScreen> {
         _statusMessage = 'Ошибка во время запуска: $e';
         _isError = true;
       });
-      debugPrint('Error during external app launch: $e');
+      await LoggerService.error('Error during external app launch: $e');
     }
   }
 

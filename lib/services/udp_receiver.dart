@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import '../models/eeg_data.dart';
 import '../models/connection_state.dart';
+import '../services/logger_service.dart';
 
 /// UDP receiver service for EEG data with JSON support
 class UDPReceiver {
@@ -155,7 +156,7 @@ class UDPReceiver {
     }
   }
 
-  void _processPacket(Uint8List data) {
+  void _processPacket(Uint8List data) async {
     try {
       // Update statistics
       _packetsReceived++;
@@ -178,12 +179,12 @@ class UDPReceiver {
       ));
       
     } catch (error) {
-      debugPrint('Error processing packet: $error');
+      await LoggerService.error('Error processing packet: $error');
       // Don't emit error for individual packet processing failures
     }
   }
 
-  void _processJsonPacket(Uint8List data) {
+  void _processJsonPacket(Uint8List data) async {
     try {
       // Convert UDP data to string
       final jsonString = utf8.decode(data);
@@ -202,7 +203,7 @@ class UDPReceiver {
       
     } catch (e) {
       _jsonParseErrors++;
-      debugPrint('JSON parsing error: $e');
+      await LoggerService.error('JSON parsing error: $e');
       
       // Try to handle as missing/malformed data
       if (e is EEGJsonParseException) {
@@ -211,7 +212,7 @@ class UDPReceiver {
     }
   }
 
-  void _handleMalformedJsonData(EEGJsonParseException error) {
+  void _handleMalformedJsonData(EEGJsonParseException error) async {
     // Create a sample with predicted timestamp for continuity
     try {
       final predictedTimestamp = _timeDeltaProcessor.handleMissingDelta();
@@ -244,7 +245,7 @@ class UDPReceiver {
       _jsonDataController.add(fallbackSample);
       
     } catch (e) {
-      debugPrint('Failed to create fallback sample: $e');
+      await LoggerService.error('Failed to create fallback sample: $e');
     }
   }
 

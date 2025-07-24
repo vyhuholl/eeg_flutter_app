@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../models/eeg_data.dart';
 import '../services/data_processor.dart';
+import '../services/logger_service.dart';
 
 /// Chart visibility options
 enum ChartVisibility {
@@ -155,8 +156,8 @@ class EEGDataProvider with ChangeNotifier {
     notifyListeners(); // Update UI with throttled data (max 60 FPS)
   }
 
-  void _onDataError(error) {
-    debugPrint('EEG data error: $error');
+  void _onDataError(error) async  {
+    await LoggerService.error('EEG data error: $error');
   }
 
   /// Get EEG time series data for charts
