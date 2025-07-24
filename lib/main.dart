@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as path;
 import 'package:flutter/material.dart';
@@ -89,14 +90,21 @@ class ExeManager {
       
       await LoggerService.info('Launching EasyEEG_BCI.exe from: $exePath');
       
-      // Launch the executable using Windows Start-Process (proper method for GUI apps)
-      // This is equivalent to PowerShell's Start-Process command
+      // Launch the executable
       final result = await Process.run(
         'powershell.exe',
-        ['-Command', 'Start-Process', '-FilePath', '"$exePath"'],
-        runInShell: true,
+        [
+          '-NoProfile',
+          '-ExecutionPolicy', 'Bypass',
+          '-Command', 
+          'Start-Process',
+          '-FilePath',
+          '"$exePath"'
+        ],
+        runInShell: false,
+        stdoutEncoding: utf8,
+        stderrEncoding: utf8,
       );
-      
       if (result.exitCode == 0) {
         await LoggerService.info('EasyEEG_BCI.exe launched successfully');
         return true;
@@ -121,8 +129,15 @@ class ExeManager {
     try {
       final result = await Process.run(
         'powershell.exe',
-        ['-Command', 'Get-Process | Where-Object {\$_.MainWindowTitle -like "*$windowTitlePattern*"} | Select-Object -First 1'],
-        runInShell: true,
+        [
+          '-NoProfile',
+          '-ExecutionPolicy', 'Bypass',
+          '-Command',
+          'Get-Process | Where-Object {\$_.MainWindowTitle -like "*$windowTitlePattern*"} | Select-Object -First 1'
+        ],
+        runInShell: false,
+        stdoutEncoding: utf8,
+        stderrEncoding: utf8,
       );
 
       if (result.exitCode == 0 && result.stdout.toString().trim().isNotEmpty) {
