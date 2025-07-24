@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:flutter/services.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -36,28 +35,7 @@ class ExeManager {
   }
 
   static Future<String> extractAndGetExePath() async {
-    // Use local app data directory for executables on Windows
-    late Directory appDir;
-    
-    if (Platform.isWindows) {
-      // On Windows, use LocalAppData for better executable permissions
-      final localAppData = Platform.environment['LOCALAPPDATA'];
-      if (localAppData != null) {
-        appDir = Directory(path.join(localAppData, 'eeg_flutter_app'));
-      } else {
-        // Fallback to application support directory
-        appDir = await getApplicationSupportDirectory();
-      }
-    } else {
-      // For other platforms, use application support directory
-      appDir = await getApplicationSupportDirectory();
-    }
-    
-    // Ensure directory exists
-    if (!appDir.existsSync()) {
-      await appDir.create(recursive: true);
-    }
-    
+    final appDir = Directory.current;
     final exePath = path.join(appDir.path, 'EasyEEG_BCI.exe');
 
     // Check if already extracted and up to date
