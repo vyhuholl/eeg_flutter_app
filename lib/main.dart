@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as path;
 import 'package:flutter/material.dart';
@@ -68,11 +69,11 @@ class ExeManager {
           '-NoProfile',
           '-ExecutionPolicy', 'Bypass',
           '-Command', 
-          'Start-Process',
-          '-FilePath',
-          '"$exePath"'
+          '[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; Start-Process -FilePath "$exePath"'
         ],
         runInShell: false,
+        stdoutEncoding: utf8,
+        stderrEncoding: utf8,
       );
       if (result.exitCode == 0) {
         await LoggerService.info('EasyEEG_BCI.exe launched successfully');
@@ -102,7 +103,7 @@ class ExeManager {
           '-NoProfile',
           '-ExecutionPolicy', 'Bypass',
           '-Command',
-          'Get-Process | Where-Object {\$_.MainWindowTitle -like "*$windowTitlePattern*"} | Select-Object -First 1'
+          '[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; Get-Process | Where-Object {\$_.MainWindowTitle -like "*$windowTitlePattern*"} | Select-Object -First 1'
         ],
         runInShell: false,
       );
