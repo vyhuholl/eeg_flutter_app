@@ -39,11 +39,19 @@ class _MeditationScreenState extends State<MeditationScreen> {
   bool _isCsvLogging = false;
   StreamSubscription<List<EEGJsonSample>>? _csvDataSubscription;
   
-  // CSV buffering for performance optimization
-  final List<String> _csvBuffer = [];
+  // Optimized CSV buffering
+  final StringBuffer _csvBuffer = StringBuffer();
+  int _csvBufferLineCount = 0;
   Timer? _csvFlushTimer;
-  static const int _maxBufferSize = 1000; // Lines before forced flush
-  static const int _flushIntervalMs = 3000; // 3 seconds
+  static const int _maxBufferLines = 500; // Reduced for more frequent flushes
+  static const int _flushIntervalMs = 1000; // More frequent flushes (1 second)
+  
+  // Pre-allocated lists to avoid garbage collection
+  final List<String> _csvFieldsBuffer = List.filled(22, '');
+  
+  // Batch processing
+  final List<EEGJsonSample> _pendingSamples = [];
+  static const int _batchSize = 50; // Process samples in batches
   
   // Sliding window state for O(n) value calculation
   final List<EEGJsonSample> _valueWindow = [];
@@ -69,10 +77,6 @@ class _MeditationScreenState extends State<MeditationScreen> {
     _valueWindow.clear();
     _valueRunningSum = 0.0;
     _validValueCount = 0;
-    
-    // Additional CSV buffer cleanup (already handled in _stopCsvLogging, but ensure safety)
-    _csvFlushTimer?.cancel();
-    _csvBuffer.clear();
     
     super.dispose();
   }
@@ -190,26 +194,20 @@ class _MeditationScreenState extends State<MeditationScreen> {
     return newSize.clamp(minSize, maxSize);
   }
 
-  // CSV Debug Logging Methods
+  // CSV Logging Methods
   Future<void> _initializeCsvLogging() async {
     try {
-      // Get the application documents directory
       final directory = await getApplicationDocumentsDirectory();
-      
-      // Create "eeg_samples" subdirectory if it doesn't exist
       final eegSamplesDir = Directory(path.join(directory.path, 'eeg_samples'));
       await eegSamplesDir.create(recursive: true);
       
-      // Generate unique timestamped filename
       final timestamp = _formatDateTimeForFilename(DateTime.now());
       final csvPath = path.join(eegSamplesDir.path, '${timestamp}_EEG_samples.csv');
       
       _csvFile = File(csvPath);
       
-      // Create CSV header with all EEGJsonSample attributes
+      // Write header once
       const csvHeader = 'timeDelta,eegValue,absoluteTimestamp,sequenceNumber,d1,t1,t2,a1,a2,b1,b2,b3,g1,theta,alpha,beta,gamma,btr,atr,pope,gtr,rab\n';
-      
-      // Create new file (write mode)
       await _csvFile!.writeAsString(csvHeader, mode: FileMode.write);
       
       _isCsvLogging = true;
@@ -235,55 +233,105 @@ class _MeditationScreenState extends State<MeditationScreen> {
     _csvDataSubscription = eegProvider.dataProcessor.processedJsonDataStream.listen(
       (samples) {
         if (_isCsvLogging && samples.isNotEmpty) {
-          _writeSamplesToCsv(samples);
+          // Add to pending samples for batch processing
+          _pendingSamples.addAll(samples);
+          
+          // Process in batches to reduce overhead
+          if (_pendingSamples.length >= _batchSize) {
+            _processBatchedSamples();
+          }
         }
       },
     );
   }
 
+  void _processBatchedSamples() {
+    if (_pendingSamples.isEmpty) return;
+    
+    _writeBatchedSamplesToCsv(_pendingSamples);
+    _pendingSamples.clear();
+  }
+
   void _startCsvFlushTimer() {
     _csvFlushTimer = Timer.periodic(const Duration(milliseconds: _flushIntervalMs), (timer) {
+      // Process any remaining samples
+      if (_pendingSamples.isNotEmpty) {
+        _processBatchedSamples();
+      }
       _flushCsvBuffer();
     });
   }
 
-  Future<void> _writeSamplesToCsv(List<EEGJsonSample> samples) async {
-    if (_csvFile == null || !_isCsvLogging) return;
+  void _writeBatchedSamplesToCsv(List<EEGJsonSample> samples) {
+    if (_csvFile == null || !_isCsvLogging || samples.isEmpty) return;
     
     try {
+      // Use StringBuffer for efficient string building
+      final batchBuffer = StringBuffer();
+      
       for (final sample in samples) {
-        // Format the timestamp as ISO string for better readability
-        final timestampStr = sample.absoluteTimestamp.toIso8601String();
+        // Use milliseconds since epoch instead of ISO string for better performance
+        final timestampMs = sample.absoluteTimestamp.millisecondsSinceEpoch;
         
-        // Use semicolon separator to match header format
-        final csvLine = '${sample.timeDelta},${sample.eegValue},$timestampStr,${sample.sequenceNumber},${sample.d1},${sample.t1},${sample.t2},${sample.a1},${sample.a2},${sample.b1},${sample.b2},${sample.b3},${sample.g1},${sample.theta},${sample.alpha},${sample.beta},${sample.gamma},${sample.btr},${sample.atr},${sample.pope},${sample.gtr},${sample.rab}';
+        // Pre-populate fields array to avoid repeated string operations
+        _csvFieldsBuffer[0] = sample.timeDelta.toString();
+        _csvFieldsBuffer[1] = sample.eegValue.toString();
+        _csvFieldsBuffer[2] = timestampMs.toString();
+        _csvFieldsBuffer[3] = sample.sequenceNumber.toString();
+        _csvFieldsBuffer[4] = sample.d1.toString();
+        _csvFieldsBuffer[5] = sample.t1.toString();
+        _csvFieldsBuffer[6] = sample.t2.toString();
+        _csvFieldsBuffer[7] = sample.a1.toString();
+        _csvFieldsBuffer[8] = sample.a2.toString();
+        _csvFieldsBuffer[9] = sample.b1.toString();
+        _csvFieldsBuffer[10] = sample.b2.toString();
+        _csvFieldsBuffer[11] = sample.b3.toString();
+        _csvFieldsBuffer[12] = sample.g1.toString();
+        _csvFieldsBuffer[13] = sample.theta.toString();
+        _csvFieldsBuffer[14] = sample.alpha.toString();
+        _csvFieldsBuffer[15] = sample.beta.toString();
+        _csvFieldsBuffer[16] = sample.gamma.toString();
+        _csvFieldsBuffer[17] = sample.btr.toString();
+        _csvFieldsBuffer[18] = sample.atr.toString();
+        _csvFieldsBuffer[19] = sample.pope.toString();
+        _csvFieldsBuffer[20] = sample.gtr.toString();
+        _csvFieldsBuffer[21] = sample.rab.toString();
         
-        // Add to buffer instead of immediate disk write
-        _addToCsvBuffer(csvLine);
+        // Join fields efficiently
+        batchBuffer.write(_csvFieldsBuffer.join(','));
+        batchBuffer.write('\n');
       }
+      
+      // Add batch to main buffer
+      _addBatchToCsvBuffer(batchBuffer.toString(), samples.length);
+      
     } catch (e) {
-      await LoggerService.error('Error buffering CSV data: $e');
+      LoggerService.error('Error batching CSV data: $e');
     }
   }
 
-  void _addToCsvBuffer(String csvLine) {
-    _csvBuffer.add(csvLine);
+  void _addBatchToCsvBuffer(String batchData, int lineCount) {
+    _csvBuffer.write(batchData);
+    _csvBufferLineCount += lineCount;
     
-    // Auto-flush if buffer gets too large
-    if (_csvBuffer.length >= _maxBufferSize) {
+    // Check buffer size less frequently
+    if (_csvBufferLineCount >= _maxBufferLines) {
       _flushCsvBuffer();
     }
   }
 
   Future<void> _flushCsvBuffer() async {
-    if (_csvBuffer.isEmpty || _csvFile == null || !_isCsvLogging) return;
+    if (_csvBufferLineCount == 0 || _csvFile == null || !_isCsvLogging) return;
     
     try {
-      final csvData = '${_csvBuffer.join('\n')}\n';
-      await _csvFile!.writeAsString(csvData, mode: FileMode.append);
+      // Write entire buffer at once
+      await _csvFile!.writeAsString(_csvBuffer.toString(), mode: FileMode.append);
+      
+      // Clear buffer efficiently
       _csvBuffer.clear();
+      _csvBufferLineCount = 0;
     } catch (e) {
-      await LoggerService.error('Error flushing CSV buffer: $e');
+      LoggerService.error('Error flushing CSV buffer: $e');
     }
   }
 
@@ -292,15 +340,21 @@ class _MeditationScreenState extends State<MeditationScreen> {
     _csvDataSubscription?.cancel();
     _csvDataSubscription = null;
     
-    // Flush any remaining buffer data before stopping
+    // Process any remaining samples
+    if (_pendingSamples.isNotEmpty) {
+      _processBatchedSamples();
+    }
+    
+    // Flush any remaining buffer data
     _flushCsvBuffer();
     
-    // Cancel the flush timer
+    // Cancel timer and cleanup
     _csvFlushTimer?.cancel();
     _csvFlushTimer = null;
     
-    // Clear the buffer
     _csvBuffer.clear();
+    _csvBufferLineCount = 0;
+    _pendingSamples.clear();
   }
 
   Widget _buildLegend() {
