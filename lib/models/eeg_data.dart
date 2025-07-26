@@ -347,7 +347,7 @@ class EEGConfig {
   const EEGConfig({
     required this.deviceAddress,
     required this.devicePort,
-    this.bufferSize = 13000, // Default to 130 seconds at 100Hz (120 * 100 = 12,000)
+    this.bufferSize = 13000, // Default to 130 seconds at 100Hz (130 * 100 = 13,000 samples)
   });
 
   factory EEGConfig.defaultConfig() {

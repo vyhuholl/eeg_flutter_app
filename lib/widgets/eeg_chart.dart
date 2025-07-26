@@ -94,25 +94,39 @@ class EEGChart extends StatelessWidget {
     final now = DateTime.now();
     final timeSinceConnection = now.difference(connectionStartTime).inSeconds;
     
-    final cutoffTime = timeSinceConnection > 120 
-        ? now.millisecondsSinceEpoch - (120 * 1000)  // Show last 120 seconds
-        : connectionStartTime.millisecondsSinceEpoch; // Show all data since connection
-        
-    final recentSamples = jsonSamples.where((sample) => 
-      sample.absoluteTimestamp.millisecondsSinceEpoch >= cutoffTime).toList();
+    // For moving average calculation, we need extra data when displaying 120-second window
+    List<EEGJsonSample> samplesForMovingAverage;
+    if (timeSinceConnection > 120) {
+      // Get 130 seconds of data for moving average calculation (extra 10 seconds for window)
+      final movingAverageCutoffTime = now.millisecondsSinceEpoch - (130 * 1000);
+      samplesForMovingAverage = jsonSamples.where((sample) => 
+        sample.absoluteTimestamp.millisecondsSinceEpoch >= movingAverageCutoffTime).toList();
+    } else {
+      // If less than 120 seconds since connection, use all available data
+      samplesForMovingAverage = jsonSamples.where((sample) =>
+        sample.absoluteTimestamp.millisecondsSinceEpoch >= connectionStartTime.millisecondsSinceEpoch).toList();
+    }
     
-    if (recentSamples.isEmpty) return [];
+    if (samplesForMovingAverage.isEmpty) return [];
     
     // Calculate brainwave ratios and apply moving average to both focus and relaxation
-    final focusData = _calculateFocusMovingAverage(recentSamples, connectionStartTime);
-    final relaxationData = _calculateRelaxationMovingAverage(recentSamples, connectionStartTime);
+    final focusData = _calculateFocusMovingAverage(samplesForMovingAverage, connectionStartTime);
+    final relaxationData = _calculateRelaxationMovingAverage(samplesForMovingAverage, connectionStartTime);
+    
+    // Filter the moving average results to show only the last 120 seconds
+    final displayCutoffTime = timeSinceConnection > 120 
+        ? (timeSinceConnection - 120).toDouble()
+        : 0.0;
+    
+    final filteredFocusData = focusData.where((spot) => spot.x >= displayCutoffTime).toList();
+    final filteredRelaxationData = relaxationData.where((spot) => spot.x >= displayCutoffTime).toList();
     
     final lines = <LineChartBarData>[];
     
     // Add focus line (violet) if we have data
-    if (focusData.isNotEmpty) {
+    if (filteredFocusData.isNotEmpty) {
       lines.add(LineChartBarData(
-        spots: focusData,
+        spots: filteredFocusData,
         isCurved: false,
         color: const Color(0xFFBF5AF2), // Violet
         barWidth: 2.0,
@@ -123,9 +137,9 @@ class EEGChart extends StatelessWidget {
     }
     
     // Add relaxation line (green) if we have data
-    if (relaxationData.isNotEmpty) {
+    if (filteredRelaxationData.isNotEmpty) {
       lines.add(LineChartBarData(
-        spots: relaxationData,
+        spots: filteredRelaxationData,
         isCurved: false,
         color: const Color(0xFF32D74B), // Green
         barWidth: 2.0,
@@ -253,17 +267,32 @@ class EEGChart extends StatelessWidget {
     final now = DateTime.now();
     final timeSinceConnection = now.difference(connectionStartTime).inSeconds;
     
-    final cutoffTime = timeSinceConnection > 120 
-        ? now.millisecondsSinceEpoch - (120 * 1000)  // Show last 120 seconds
-        : connectionStartTime.millisecondsSinceEpoch; // Show all data since connection
-        
-    final recentSamples = jsonSamples.where((sample) => 
-      sample.absoluteTimestamp.millisecondsSinceEpoch >= cutoffTime).toList();
+    // For moving average calculation, we need extra data when displaying 120-second window
+    List<EEGJsonSample> samplesForMovingAverage;
+    if (timeSinceConnection > 120) {
+      // Get 130 seconds of data for moving average calculation (extra 10 seconds for window)
+      final movingAverageCutoffTime = now.millisecondsSinceEpoch - (130 * 1000);
+      samplesForMovingAverage = jsonSamples.where((sample) => 
+        sample.absoluteTimestamp.millisecondsSinceEpoch >= movingAverageCutoffTime).toList();
+    } else {
+      // If less than 120 seconds since connection, use all available data
+      samplesForMovingAverage = jsonSamples.where((sample) =>
+        sample.absoluteTimestamp.millisecondsSinceEpoch >= connectionStartTime.millisecondsSinceEpoch).toList();
+    }
     
-    if (recentSamples.isEmpty) return [];
+    if (samplesForMovingAverage.isEmpty) return [];
     
     // Calculate meditation-specific lines
-    final popeData = _calculateFocusMovingAverage(recentSamples, connectionStartTime); // Reuse for Pope line
+    final popeData = _calculateFocusMovingAverage(samplesForMovingAverage, connectionStartTime); // Reuse for Pope line
+    
+    // For non-moving average lines, filter to show only last 120 seconds
+    final displayCutoffTime = timeSinceConnection > 120 
+        ? now.millisecondsSinceEpoch - (120 * 1000)
+        : connectionStartTime.millisecondsSinceEpoch;
+        
+    final recentSamples = jsonSamples.where((sample) => 
+      sample.absoluteTimestamp.millisecondsSinceEpoch >= displayCutoffTime).toList();
+    
     final btrData = <FlSpot>[];
     final atrData = <FlSpot>[];
     final gtrData = <FlSpot>[];
@@ -276,6 +305,13 @@ class EEGChart extends StatelessWidget {
       atrData.add(FlSpot(relativeTimeSeconds, sample.atr));
       gtrData.add(FlSpot(relativeTimeSeconds, sample.gtr));
     }
+    
+    // Filter the Pope moving average results to show only the last 120 seconds
+    final popeDisplayCutoffTime = timeSinceConnection > 120 
+        ? (timeSinceConnection - 120).toDouble()
+        : 0.0;
+    
+    final filteredPopeData = popeData.where((spot) => spot.x >= popeDisplayCutoffTime).toList();
     
     final lines = <LineChartBarData>[];
     
@@ -318,10 +354,10 @@ class EEGChart extends StatelessWidget {
       ));
     }
     
-    // Add Pope line (violet) last so it appears on top of all other lines
-    if (popeData.isNotEmpty) {
+    // Add Pope line (violet) on top if we have data
+    if (filteredPopeData.isNotEmpty) {
       lines.add(LineChartBarData(
-        spots: popeData,
+        spots: filteredPopeData,
         isCurved: false,
         color: const Color(0xFFBF5AF2), // Violet
         barWidth: 1.0, // Made thinner

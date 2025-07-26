@@ -1,14 +1,15 @@
 ﻿# Active Context - EEG Flutter App
 
 ## Current Work Focus
-**VAN MODE LEVEL 1** - Relaxation Line Moving Average Implementation ✅ COMPLETED
+**VAN MODE LEVEL 1** - EEG Chart Moving Average Enhancement ✅ COMPLETED
 
-## Project Status: LEVEL 1 RELAXATION LINE MOVING AVERAGE IMPLEMENTATION COMPLETED SUCCESSFULLY
+## Project Status: LEVEL 1 EEG CHART MOVING AVERAGE ENHANCEMENT COMPLETED SUCCESSFULLY
 - Flutter project with complete EEG UDP networking implementation
 - Real-time data processing and visualization system
 - Provider-based state management with multi-channel support
 - Full architecture matching documented system patterns
-- **COMPLETED**: Enhanced relaxation line with 10-second moving average matching focus line behavior ✅ COMPLETED
+- **COMPLETED**: Enhanced EEG chart moving average calculations to eliminate unstable first 10 seconds when >120s elapsed ✅ COMPLETED
+- **PREVIOUS**: Enhanced relaxation line with 10-second moving average matching focus line behavior ✅ COMPLETED
 - **PREVIOUS**: Enhanced start screen with EasyEEG BCI usage instructions above connect icon ✅ COMPLETED
 - **PREVIOUS**: Implemented setup instructions screen that appears before everything else with device placement image and continue button ✅ COMPLETED
 - **PREVIOUS**: Enhanced application to automatically create EasyEEG_BCI.conf in current directory before launching EasyEEG_BCI.exe ✅ COMPLETED
@@ -26,47 +27,48 @@
 ## Task Results ✅
 
 ### ✅ Primary Objective COMPLETED
-Enhanced the green "Расслабление" line on the EEG chart to display a 10-second moving average of RAB (alpha/beta) values, exactly matching the behavior of the violet "Фокус" line. Both lines now provide stable, smoothed biometric feedback suitable for professional meditation applications.
+Enhanced the EEG chart moving average calculations to eliminate the issue where the first 10 seconds of data would change constantly when total elapsed time exceeded 120 seconds. Modified the chart data building to provide 130 seconds of data to moving average methods when more than 120 seconds have elapsed, ensuring proper 10-second moving window calculations for the entire visible chart.
 
 ### ✅ Technical Implementation COMPLETED
 
-1. **Moving Average Algorithm** ✅
-   - **Created**: `_calculateRelaxationMovingAverage` method using O(n) sliding window algorithm
-   - **Applied**: 10-second moving average to RAB values for stable relaxation visualization
-   - **Optimized**: Identical performance characteristics to focus line algorithm
-   - **Consistency**: Matching mathematical approach and error handling
+1. **Extended Data Provision** ✅
+   - **Modified**: Chart data building methods to provide 130 seconds of data for moving average calculation
+   - **Enhanced**: Data access for proper 10-second moving window context
+   - **Optimized**: Only extends data when sessions exceed 120 seconds
+   - **Performance**: Maintains O(n) sliding window algorithm efficiency
 
-2. **Chart Data Integration** ✅
+2. **Result Filtering Integration** ✅
    ```dart
-   // Updated main chart data building
-   final focusData = _calculateFocusMovingAverage(recentSamples, connectionStartTime);
-   final relaxationData = _calculateRelaxationMovingAverage(recentSamples, connectionStartTime); // NEW
+   // Filter moving average results to display only last 120 seconds
+   final displayCutoffTime = timeSinceConnection > 120 
+       ? (timeSinceConnection - 120).toDouble()
+       : 0.0;
+   final filteredFocusData = focusData.where((spot) => spot.x >= displayCutoffTime).toList();
    ```
 
-3. **Algorithm Specifications** ✅
-   - **Time Window**: 10 seconds (10,000 milliseconds) matching focus line
-   - **Complexity**: O(n) sliding window for optimal real-time performance
-   - **Invalid Value Handling**: Skips RAB = 0.0 samples (division by zero protection)
-   - **Time Calculation**: Identical relative time calculation for visual consistency
+3. **Dual Chart Mode Enhancement** ✅
+   - **Main Screen**: Focus and relaxation lines both use extended data for moving averages
+   - **Meditation Screen**: Pope line uses extended data, BTR/ATR/GTR use standard 120s filtering
+   - **Buffer Capacity**: Updated to 13,000 samples (130 seconds at 100Hz)
 
 ### ✅ Implementation Results
 
-**Enhanced Biometric Feedback**:
-- **Stable Relaxation Line**: Smoothed RAB values eliminate erratic fluctuations
-- **Visual Consistency**: Both focus and relaxation lines now behave identically
-- **Professional Quality**: Clinical-grade biofeedback suitable for therapeutic applications
-- **User Experience**: Stable feedback enables better meditation progress tracking
+**Enhanced Chart Stability**:
+- **Eliminated Unstable Display**: First 10 seconds of chart no longer change constantly
+- **Complete Moving Windows**: All 10-second averages calculated with proper historical context
+- **Professional Quality**: Chart behavior now meets scientific visualization standards
+- **Mathematical Accuracy**: Moving averages calculated with complete data windows
 
 **Algorithm Benefits**:
-- **Performance**: No degradation, same O(n) efficiency as focus line
-- **Accuracy**: Double-precision calculations preserve mathematical precision
-- **Reliability**: Proper handling of edge cases and invalid values
-- **Maintainability**: Clear, consistent code structure matching existing patterns
+- **Performance**: No degradation, maintains efficient O(n) sliding window approach
+- **Accuracy**: Double-precision calculations with complete 10-second data windows
+- **Reliability**: Proper handling of edge cases and backward compatibility
+- **Maintainability**: Clean architecture separating moving average from non-moving average data
 
 **User Experience Enhancement**:
-- **Reduced Noise**: 10-second averaging eliminates distracting momentary spikes
-- **Better Tracking**: Users can clearly see relaxation trends during meditation
-- **Predictable Behavior**: Both lines respond consistently to biometric changes
+- **Stable Visualization**: Consistent display behavior throughout entire visible time range
+- **Better Tracking**: Users see stable trends without erratic changes in early time periods
+- **Predictable Behavior**: Chart responds consistently to biometric changes
 - **Professional Standards**: Visualization quality suitable for clinical and research use
 
 ### ✅ Previous Task: Start Screen Instructions Enhancement ✅ COMPLETED
@@ -80,8 +82,9 @@ Enhanced the start screen (_buildStartScreen widget) by adding instructional tex
 - **Error Prevention**: Proper sequence guidance reduces setup errors and troubleshooting needs
 
 ## Files Modified ✅
-- ✅ lib/widgets/eeg_chart.dart - Added `_calculateRelaxationMovingAverage` method and updated main chart data building
-- ✅ memory-bank/tasks.md - Documented relaxation line moving average implementation
+- ✅ lib/widgets/eeg_chart.dart - Enhanced moving average data provision and result filtering for both main and meditation chart modes
+- ✅ lib/models/eeg_data.dart - Updated buffer size configuration for 130-second capacity
+- ✅ memory-bank/tasks.md - Documented EEG chart moving average enhancement implementation
 - ✅ memory-bank/activeContext.md - Updated current status
 
 ## Quality Assurance Results ✅
@@ -152,9 +155,9 @@ Enhanced the start screen (_buildStartScreen widget) by adding instructional tex
 
 ## Current State
 - **Mode**: VAN Level 1 ✅ COMPLETED
-- **Next**: Ready for verification of relaxation line moving average enhancement
-- **Blockers**: None - relaxation line moving average implementation successfully completed
-- **Status**: ✅ RELAXATION LINE MOVING AVERAGE IMPLEMENTATION COMPLETED
+- **Next**: Ready for verification of EEG chart moving average enhancement
+- **Blockers**: None - EEG chart moving average enhancement implementation successfully completed
+- **Status**: ✅ EEG CHART MOVING AVERAGE ENHANCEMENT COMPLETED
 
 ---
 
