@@ -30,8 +30,8 @@ class ValidationDataProcessor {
     // Invalidate cache
     _statisticsValid = false;
     
-    // Maintain maximum buffer size safety (20% buffer beyond 5 seconds)
-    if (_eegValues.length > 600) {
+    // Maintain maximum buffer size safety (20% buffer beyond 1 second)
+    if (_eegValues.length > 120) {
       _forceCleanup();
     }
   }
@@ -161,7 +161,7 @@ class ValidationDataProcessor {
 
   /// Force cleanup when buffer gets too large
   void _forceCleanup() {
-    final targetSize = 500; // Keep last 500 samples
+    final targetSize = 100; // Keep last 100 samples
     if (_eegValues.length > targetSize) {
       final removeCount = _eegValues.length - targetSize;
       _eegValues.removeRange(0, removeCount);
