@@ -74,10 +74,7 @@ class _MeditationScreenState extends State<MeditationScreen> {
         // Stop timer after 5 minutes (300 seconds)
         if (_seconds >= 300) {
           _timer.cancel();
-          // Stop CSV logging when timer ends
-          if (kDebugMode) {
-            _stopCsvLogging();
-          }
+          _stopCsvLogging();
         }
       });
     });
@@ -91,9 +88,7 @@ class _MeditationScreenState extends State<MeditationScreen> {
   }
 
   void _endMeditation() {
-    if (kDebugMode) {
-      _stopCsvLogging();
-    }
+    _stopCsvLogging();
     // Navigate back to start screen
     Navigator.of(context).popUntil((route) => route.isFirst);
   }
@@ -186,14 +181,21 @@ class _MeditationScreenState extends State<MeditationScreen> {
     try {
       // Get the application documents directory
       final directory = await getApplicationDocumentsDirectory();
-      final csvPath = path.join(directory.path, 'EEG_samples.csv');
+      
+      // Create "eeg_samples" subdirectory if it doesn't exist
+      final eegSamplesDir = Directory(path.join(directory.path, 'eeg_samples'));
+      await eegSamplesDir.create(recursive: true);
+      
+      // Generate unique timestamped filename
+      final timestamp = _formatDateTimeForFilename(DateTime.now());
+      final csvPath = path.join(eegSamplesDir.path, '${timestamp}_EEG_samples.csv');
       
       _csvFile = File(csvPath);
       
       // Create CSV header with all EEGJsonSample attributes
       const csvHeader = 'timeDelta;eegValue;absoluteTimestamp;sequenceNumber;d1;t1;t2;a1;a2;b1;b2;b3;g1;theta;alpha;beta;gamma;btr;atr;pope;gtr;rab\n';
       
-      // Overwrite file if it exists (write mode)
+      // Create new file (write mode)
       await _csvFile!.writeAsString(csvHeader, mode: FileMode.write);
       
       _isCsvLogging = true;
@@ -201,6 +203,16 @@ class _MeditationScreenState extends State<MeditationScreen> {
     } catch (e) {
       await LoggerService.error('Error initializing CSV logging: $e');
     }
+  }
+
+  /// Format DateTime for use in filenames (avoiding invalid characters)
+  String _formatDateTimeForFilename(DateTime dateTime) {
+    return '${dateTime.year.toString().padLeft(4, '0')}-'
+           '${dateTime.month.toString().padLeft(2, '0')}-'
+           '${dateTime.day.toString().padLeft(2, '0')}_'
+           '${dateTime.hour.toString().padLeft(2, '0')}-'
+           '${dateTime.minute.toString().padLeft(2, '0')}-'
+           '${dateTime.second.toString().padLeft(2, '0')}';
   }
 
   void _startCsvDataSubscription() {

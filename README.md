@@ -5,7 +5,7 @@ An interface for the [EasyEEG BCI](https://labdata.ru/news/easyeeg-bci) device. 
 ```bash
 flutter build windows --debug
 ```
-In debug mode data received from device during meditation training are saved to the file `EEG_samples.csv` in the Documents folder.
+During each meditation training, all data received from device is saved as CSV in the Documents/eeg_samples folder.
 ### Release mode
 ```
 flutter build windows
