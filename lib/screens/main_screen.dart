@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/eeg_data_provider.dart';
 import '../providers/connection_provider.dart';
+import '../providers/electrode_validation_provider.dart';
+import '../models/validation_models.dart';
 import '../widgets/eeg_chart.dart';
+import '../screens/electrode_validation_screen.dart';
 import 'meditation_selection_screen.dart';
 
 /// Main screen of the EEG Flutter app with start screen and EEG chart
@@ -16,12 +19,15 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
-    return Consumer<ConnectionProvider>(
-      builder: (context, connectionProvider, child) {
-        if (connectionProvider.isConnected) {
-          return _buildEEGScreen(context, connectionProvider);
-        } else {
+    return Consumer2<ConnectionProvider, ElectrodeValidationProvider>(
+      builder: (context, connectionProvider, validationProvider, child) {
+        // Navigation logic based on connection and validation state
+        if (!connectionProvider.isConnected) {
           return _buildStartScreen(context, connectionProvider);
+        } else if (validationProvider.state != ElectrodeValidationState.valid) {
+          return const ElectrodeValidationScreen();
+        } else {
+          return _buildEEGScreen(context, connectionProvider);
         }
       },
     );

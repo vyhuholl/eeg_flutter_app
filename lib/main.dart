@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'providers/eeg_data_provider.dart';
 import 'providers/connection_provider.dart';
+import 'providers/electrode_validation_provider.dart';
 import 'screens/main_screen.dart';
 import 'models/eeg_data.dart';
 import 'services/logger_service.dart';
@@ -158,6 +159,11 @@ class EEGApp extends StatelessWidget {
               eegDataProvider: eegDataProvider,
             );
           },
+        ),
+        
+        // Electrode Validation Provider
+        ChangeNotifierProvider(
+          create: (context) => ElectrodeValidationProvider(),
         ),
       ],
       child: MaterialApp(

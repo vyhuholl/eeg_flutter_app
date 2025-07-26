@@ -226,7 +226,7 @@ class _MeditationScreenState extends State<MeditationScreen> {
         // Format the timestamp as ISO string for better readability
         final timestampStr = sample.absoluteTimestamp.toIso8601String();
         
-        final csvLine = '${sample.timeDelta};${sample.eegValue};$timestampStr;${sample.sequenceNumber};${sample.d1};${sample.t1};${sample.t2};${sample.a1};${sample.a2};${sample.b1};${sample.b2};${sample.b3};${sample.g1};${sample.theta};${sample.alpha};${sample.beta};${sample.gamma};${sample.btr};${sample.atr};${sample.pope};${sample.gtr};${sample.rab}';
+        final csvLine = '${sample.timeDelta},${sample.eegValue},$timestampStr,${sample.sequenceNumber},${sample.d1},${sample.t1},${sample.t2},${sample.a1},${sample.a2},${sample.b1},${sample.b2},${sample.b3},${sample.g1},${sample.theta},${sample.alpha},${sample.beta},${sample.gamma},${sample.btr},${sample.atr},${sample.pope},${sample.gtr},${sample.rab}';
         csvLines.add(csvLine);
       }
       
