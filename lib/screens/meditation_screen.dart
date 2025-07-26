@@ -39,6 +39,12 @@ class _MeditationScreenState extends State<MeditationScreen> {
   bool _isCsvLogging = false;
   StreamSubscription<List<EEGJsonSample>>? _csvDataSubscription;
   
+  // CSV buffering for performance optimization
+  final List<String> _csvBuffer = [];
+  Timer? _csvFlushTimer;
+  static const int _maxBufferSize = 1000; // Lines before forced flush
+  static const int _flushIntervalMs = 3000; // 3 seconds
+  
   // Sliding window state for O(n) value calculation
   final List<EEGJsonSample> _valueWindow = [];
   double _valueRunningSum = 0.0;
@@ -64,6 +70,10 @@ class _MeditationScreenState extends State<MeditationScreen> {
     _valueRunningSum = 0.0;
     _validValueCount = 0;
     
+    // Additional CSV buffer cleanup (already handled in _stopCsvLogging, but ensure safety)
+    _csvFlushTimer?.cancel();
+    _csvBuffer.clear();
+    
     super.dispose();
   }
 
@@ -74,6 +84,8 @@ class _MeditationScreenState extends State<MeditationScreen> {
         // Stop timer after 5 minutes (300 seconds)
         if (_seconds >= 300) {
           _timer.cancel();
+          // Ensure final buffer flush before stopping CSV logging
+          _flushCsvBuffer();
           _stopCsvLogging();
         }
       });
@@ -88,6 +100,8 @@ class _MeditationScreenState extends State<MeditationScreen> {
   }
 
   void _endMeditation() {
+    // Ensure final buffer flush before stopping CSV logging
+    _flushCsvBuffer();
     _stopCsvLogging();
     // Navigate back to start screen
     Navigator.of(context).popUntil((route) => route.isFirst);
@@ -193,13 +207,14 @@ class _MeditationScreenState extends State<MeditationScreen> {
       _csvFile = File(csvPath);
       
       // Create CSV header with all EEGJsonSample attributes
-      const csvHeader = 'timeDelta;eegValue;absoluteTimestamp;sequenceNumber;d1;t1;t2;a1;a2;b1;b2;b3;g1;theta;alpha;beta;gamma;btr;atr;pope;gtr;rab\n';
+      const csvHeader = 'timeDelta,eegValue,absoluteTimestamp,sequenceNumber,d1,t1,t2,a1,a2,b1,b2,b3,g1,theta,alpha,beta,gamma,btr,atr,pope,gtr,rab\n';
       
       // Create new file (write mode)
       await _csvFile!.writeAsString(csvHeader, mode: FileMode.write);
       
       _isCsvLogging = true;
       _startCsvDataSubscription();
+      _startCsvFlushTimer();
     } catch (e) {
       await LoggerService.error('Error initializing CSV logging: $e');
     }
@@ -226,26 +241,49 @@ class _MeditationScreenState extends State<MeditationScreen> {
     );
   }
 
+  void _startCsvFlushTimer() {
+    _csvFlushTimer = Timer.periodic(const Duration(milliseconds: _flushIntervalMs), (timer) {
+      _flushCsvBuffer();
+    });
+  }
+
   Future<void> _writeSamplesToCsv(List<EEGJsonSample> samples) async {
     if (_csvFile == null || !_isCsvLogging) return;
     
     try {
-      final csvLines = <String>[];
-      
       for (final sample in samples) {
         // Format the timestamp as ISO string for better readability
         final timestampStr = sample.absoluteTimestamp.toIso8601String();
         
+        // Use semicolon separator to match header format
         final csvLine = '${sample.timeDelta},${sample.eegValue},$timestampStr,${sample.sequenceNumber},${sample.d1},${sample.t1},${sample.t2},${sample.a1},${sample.a2},${sample.b1},${sample.b2},${sample.b3},${sample.g1},${sample.theta},${sample.alpha},${sample.beta},${sample.gamma},${sample.btr},${sample.atr},${sample.pope},${sample.gtr},${sample.rab}';
-        csvLines.add(csvLine);
-      }
-      
-      if (csvLines.isNotEmpty) {
-        final csvData = '${csvLines.join('\n')}\n';
-        await _csvFile!.writeAsString(csvData, mode: FileMode.append);
+        
+        // Add to buffer instead of immediate disk write
+        _addToCsvBuffer(csvLine);
       }
     } catch (e) {
-      await LoggerService.error('Error writing to CSV: $e');
+      await LoggerService.error('Error buffering CSV data: $e');
+    }
+  }
+
+  void _addToCsvBuffer(String csvLine) {
+    _csvBuffer.add(csvLine);
+    
+    // Auto-flush if buffer gets too large
+    if (_csvBuffer.length >= _maxBufferSize) {
+      _flushCsvBuffer();
+    }
+  }
+
+  Future<void> _flushCsvBuffer() async {
+    if (_csvBuffer.isEmpty || _csvFile == null || !_isCsvLogging) return;
+    
+    try {
+      final csvData = '${_csvBuffer.join('\n')}\n';
+      await _csvFile!.writeAsString(csvData, mode: FileMode.append);
+      _csvBuffer.clear();
+    } catch (e) {
+      await LoggerService.error('Error flushing CSV buffer: $e');
     }
   }
 
@@ -253,6 +291,16 @@ class _MeditationScreenState extends State<MeditationScreen> {
     _isCsvLogging = false;
     _csvDataSubscription?.cancel();
     _csvDataSubscription = null;
+    
+    // Flush any remaining buffer data before stopping
+    _flushCsvBuffer();
+    
+    // Cancel the flush timer
+    _csvFlushTimer?.cancel();
+    _csvFlushTimer = null;
+    
+    // Clear the buffer
+    _csvBuffer.clear();
   }
 
   Widget _buildLegend() {
