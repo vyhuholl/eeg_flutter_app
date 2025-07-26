@@ -7,7 +7,7 @@ class ValidationConstants {
   static const double maxVariance = 500.0;
   static const Duration validationWindow = Duration(seconds: 5);
   static const Duration recalculationThrottle = Duration(milliseconds: 500);
-  static const int minSamplesRequired = 100; // Minimum samples for validation (10 seconds at 10Hz)
+  static const int minSamplesRequired = 50; // Minimum samples for validation (5 seconds at 10Hz)
 }
 
 /// Electrode validation state enumeration

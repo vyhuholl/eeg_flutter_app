@@ -273,7 +273,7 @@ class UDPReceiver {
     final timeSinceLastData = DateTime.now().difference(_lastDataReceived!);
     
     // If no data received for 10 seconds, consider connection unhealthy
-    if (timeSinceLastData.inSeconds > 10) {
+    if (timeSinceLastData.inSeconds > 5) {
       _updateConnectionState(ConnectionState.error('No data received for ${timeSinceLastData.inSeconds} seconds'));
       _scheduleReconnect();
     }
