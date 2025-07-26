@@ -347,14 +347,14 @@ class EEGConfig {
   const EEGConfig({
     required this.deviceAddress,
     required this.devicePort,
-    this.bufferSize = 12000, // Default to 120 seconds at 100Hz (120 * 100 = 12,000)
+    this.bufferSize = 13000, // Default to 130 seconds at 100Hz (120 * 100 = 12,000)
   });
 
   factory EEGConfig.defaultConfig() {
     return const EEGConfig(
       deviceAddress: '0.0.0.0',
       devicePort: 2000,
-      bufferSize: 12000, // 120 seconds * 100 samples/second = 12,000 samples
+      bufferSize: 13000, // 130 seconds * 100 samples/second = 13,000 samples
     );
   }
 }
