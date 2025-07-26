@@ -50,9 +50,7 @@ class _MeditationScreenState extends State<MeditationScreen> {
     super.initState();
     _startTimer();
     _startAnimationTimer();
-    if (kDebugMode) {
-      _initializeCsvLogging();
-    }
+    _initializeCsvLogging();
   }
 
   @override
