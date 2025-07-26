@@ -5,14 +5,6 @@ import '../providers/eeg_data_provider.dart';
 import '../providers/connection_provider.dart';
 import '../models/eeg_data.dart';
 
-/// Y-axis range for adaptive scaling
-class YAxisRange {
-  final double min;
-  final double max;
-
-  const YAxisRange({required this.min, required this.max});
-}
-
 /// X-axis range for time window control
 class XAxisRange {
   final double min;
@@ -71,9 +63,6 @@ class EEGChart extends StatelessWidget {
     if (lineChartData.isEmpty) {
       return _buildEmptyChart();
     }
-
-    // Calculate adaptive Y-axis range
-    final yAxisRange = _calculateAdaptiveYRange(lineChartData);
     
     // Calculate X-axis range for 120-second window
     final connectionStartTime = connectionProvider.connectionStartTime;
@@ -83,8 +72,8 @@ class EEGChart extends StatelessWidget {
       lineBarsData: lineChartData,
       minX: xAxisRange.min,
       maxX: xAxisRange.max,
-      minY: yAxisRange.min,
-      maxY: yAxisRange.max,
+      minY: 0,
+      maxY: 2,
       titlesData: showAxes ? _buildTitlesData() : const FlTitlesData(show: false),
       gridData: showGridLines ? _buildGridData() : const FlGridData(show: false),
       borderData: _buildBorderData(),
@@ -343,39 +332,6 @@ class EEGChart extends StatelessWidget {
     }
     
     return lines;
-  }
-
-  /// Calculate adaptive Y-axis range from chart data
-  YAxisRange _calculateAdaptiveYRange(List<LineChartBarData> lineChartData) {
-    if (lineChartData.isEmpty) {
-      return const YAxisRange(min: 0, max: 100); // fallback to default
-    }
-
-    double minY = double.infinity;
-    double maxY = double.negativeInfinity;
-
-    // Find min and max Y values across all data series
-    for (final lineData in lineChartData) {
-      for (final spot in lineData.spots) {
-        if (spot.y < minY) minY = spot.y;
-        if (spot.y > maxY) maxY = spot.y;
-      }
-    }
-
-    // Handle edge case where min and max are the same
-    if (minY == maxY) {
-      const padding = 50.0;
-      return YAxisRange(min: minY - padding, max: maxY + padding);
-    }
-
-    // Add padding (10% of range) to prevent data points from touching edges
-    final range = maxY - minY;
-    final padding = range * 0.1;
-    
-    return YAxisRange(
-      min: minY - padding,
-      max: maxY + padding,
-    );
   }
 
   /// Calculate X-axis range for 120-second time window
