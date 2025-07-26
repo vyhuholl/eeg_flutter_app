@@ -161,10 +161,23 @@ class EEGApp extends StatelessWidget {
           },
         ),
         
-        // Electrode Validation Provider
-        ChangeNotifierProvider(
-          create: (context) => ElectrodeValidationProvider(),
+        // Electrode Validation Provider (depends on EEG Data Provider)
+        ChangeNotifierProxyProvider<EEGDataProvider, ElectrodeValidationProvider>(
+          create: (context) {
+            final provider = ElectrodeValidationProvider();
+            provider.initialize(context.read<EEGDataProvider>());
+            return provider;
+          },
+          update: (context, eegDataProvider, validationProvider) {
+            if (validationProvider == null) {
+              final provider = ElectrodeValidationProvider();
+              provider.initialize(eegDataProvider);
+              return provider;
+            }
+            return validationProvider;
+          },
         ),
+        
       ],
       child: MaterialApp(
         title: 'EEG Monitor',

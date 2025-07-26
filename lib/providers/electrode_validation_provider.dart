@@ -1,218 +1,186 @@
-import 'dart:async';
 import 'package:flutter/foundation.dart';
-import '../models/eeg_data.dart';
 import '../models/validation_models.dart';
-import '../services/validation_data_processor.dart';
-import '../providers/eeg_data_provider.dart';
-import '../services/logger_service.dart';
+import '../services/electrode_validation_service.dart';
+import 'eeg_data_provider.dart';
 
-/// Provider for managing electrode validation state and process
-class ElectrodeValidationProvider extends ChangeNotifier {
-  // State management
-  ElectrodeValidationState _state = ElectrodeValidationState.initializing;
-  ValidationResult? _lastResult;
-  
-  // Processing components
-  final ValidationDataProcessor _processor = ValidationDataProcessor();
-  Timer? _validationTimer;
-  StreamSubscription<List<EEGJsonSample>>? _dataSubscription;
-  
-  // Internal tracking
-  DateTime? _validationStartTime;
-  int _totalSamplesProcessed = 0;
-  
+/// Provider for managing electrode validation state and operations
+class ElectrodeValidationProvider with ChangeNotifier {
   /// Current validation state
-  ElectrodeValidationState get state => _state;
+  ValidationState _currentState = ValidationState.idle;
   
-  /// Last validation result
-  ValidationResult? get lastResult => _lastResult;
+  /// Most recent validation result
+  ValidationResult? _lastValidationResult;
   
-  /// Check if validation is currently active
-  bool get isValidating => _dataSubscription != null;
+  /// Service for performing statistical validation
+  final ElectrodeValidationService _validationService = ElectrodeValidationService();
   
-  /// Check if validation has been started
-  bool get hasStarted => _validationStartTime != null;
+  /// Reference to EEG data provider for accessing data
+  EEGDataProvider? _eegDataProvider;
   
-  /// Get time since validation started
-  Duration? get timeSinceStart => _validationStartTime != null 
-      ? DateTime.now().difference(_validationStartTime!)
-      : null;
+  /// Whether the provider has been initialized
+  bool _isInitialized = false;
+
+  /// Get the current validation state
+  ValidationState get currentState => _currentState;
   
-  /// Total samples processed during validation
-  int get totalSamplesProcessed => _totalSamplesProcessed;
+  /// Get the last validation result (may be null)
+  ValidationResult? get lastValidationResult => _lastValidationResult;
   
-  /// Start electrode validation process
-  Future<void> startValidation(EEGDataProvider eegProvider) async {
-    try {
-      LoggerService.info('ElectrodeValidationProvider: Starting validation');
-      
-      // Initialize state
-      _validationStartTime = DateTime.now();
-      _totalSamplesProcessed = 0;
-      _processor.clear();
-      _setState(ElectrodeValidationState.initializing);
-      
-      // Subscribe to EEG data stream
-      _dataSubscription = eegProvider.dataProcessor.processedJsonDataStream.listen(
-        _onEEGDataReceived,
-        onError: _onDataStreamError,
-        onDone: _onDataStreamComplete,
-      );
-      
-      // Start validation timer for periodic checks
-      _validationTimer = Timer.periodic(
-        ValidationConstants.recalculationThrottle,
-        _onValidationTimerTick,
-      );
-      
-      // Set initial collecting state after brief delay
-      Timer(const Duration(milliseconds: 500), () {
-        if (_state == ElectrodeValidationState.initializing) {
-          _setState(ElectrodeValidationState.collectingData);
-        }
-      });
-      
-      LoggerService.info('ElectrodeValidationProvider: Validation started successfully');
-    } catch (e) {
-      LoggerService.error('ElectrodeValidationProvider: Failed to start validation: $e');
-      _setState(ElectrodeValidationState.connectionLost);
-    }
+  /// Whether validation has ever been performed
+  bool get hasValidationResult => _lastValidationResult != null;
+  
+  /// Whether the last validation was successful
+  bool get isLastValidationSuccessful => _lastValidationResult?.isValid ?? false;
+  
+  /// Whether validation is currently in progress
+  bool get isValidating => _currentState.isProcessing;
+  
+  /// Whether validation can be started (sufficient data available)
+  bool get canStartValidation {
+    if (_eegDataProvider == null) return false;
+    
+    // Check if we have sufficient data for 10-second validation
+    final samples = _eegDataProvider!.dataProcessor.getLatestJsonSamples();
+    return samples.length >= ValidationConstants.minSamplesRequired;
   }
   
-  /// Stop electrode validation process
-  void stopValidation() {
-    LoggerService.info('ElectrodeValidationProvider: Stopping validation');
+  /// Initialize the provider with EEG data provider reference
+  void initialize(EEGDataProvider eegDataProvider) {
+    _eegDataProvider = eegDataProvider;
+    _isInitialized = true;
     
-    _dataSubscription?.cancel();
-    _dataSubscription = null;
-    
-    _validationTimer?.cancel();
-    _validationTimer = null;
-    
-    _processor.clear();
-    _setState(ElectrodeValidationState.initializing);
-    
-    LoggerService.info('ElectrodeValidationProvider: Validation stopped');
-  }
-  
-  /// Reset validation state
-  void resetValidation() {
-    LoggerService.info('ElectrodeValidationProvider: Resetting validation');
-    
-    stopValidation();
-    _lastResult = null;
-    _validationStartTime = null;
-    _totalSamplesProcessed = 0;
-    
+    // Set initial state based on data availability
+    _updateStateBasedOnDataAvailability();
     notifyListeners();
   }
-  
-  /// Handle incoming EEG data samples
-  void _onEEGDataReceived(List<EEGJsonSample> samples) {
-    if (samples.isEmpty) return;
+
+  /// Start the electrode validation process
+  Future<void> startValidation() async {
+    if (!_isInitialized) {
+      throw StateError('ElectrodeValidationProvider must be initialized before starting validation');
+    }
+    
+    if (_eegDataProvider == null) {
+      throw StateError('EEG data provider is not available');
+    }
+    
+    // Check if validation can be started
+    if (!canStartValidation) {
+      _updateState(ValidationState.insufficientData);
+      _lastValidationResult = ValidationResult.insufficientData();
+      notifyListeners();
+      return;
+    }
     
     try {
-      // Process each sample
-      for (final sample in samples) {
-        _processor.addSample(sample.eegValue, sample.absoluteTimestamp);
-        _totalSamplesProcessed++;
-      }
+      // Update state to validating
+      _updateState(ValidationState.validating);
+      notifyListeners();
       
-      // Update state based on data availability
-      if (_state == ElectrodeValidationState.collectingData && 
-          _processor.hasSufficientData) {
-        _setState(ElectrodeValidationState.validating);
-      }
+      // Get the last 10 seconds of EEG data
+      final samples = _eegDataProvider!.dataProcessor.getLatestJsonSamples();
       
-      LoggerService.debug('ElectrodeValidationProvider: Processed ${samples.length} samples, total: $_totalSamplesProcessed');
+      // Take only the last 10 seconds worth of data (1000 samples at 100Hz)
+      final recentSamples = samples.length > ValidationConstants.minSamplesRequired
+          ? samples.sublist(samples.length - ValidationConstants.minSamplesRequired)
+          : samples;
+      
+      // Perform validation using the service
+      final result = await _validationService.validateElectrodes(recentSamples);
+      
+      // Update state based on result
+      _lastValidationResult = result;
+      _updateState(result.state);
+      
+      notifyListeners();
+      
     } catch (e) {
-      LoggerService.error('ElectrodeValidationProvider: Error processing EEG data: $e');
-      _setState(ElectrodeValidationState.connectionLost);
-    }
-  }
-  
-  /// Handle validation timer ticks for periodic validation
-  void _onValidationTimerTick(Timer timer) {
-    if (_state == ElectrodeValidationState.validating ||
-        _state == ElectrodeValidationState.valid ||
-        _state == ElectrodeValidationState.invalid) {
-      _performValidation();
-    }
-  }
-  
-  /// Perform validation calculation and update state
-  void _performValidation() {
-    try {
-      final result = _processor.calculateValidation();
-      _lastResult = result;
-      
-      // Update state based on validation result
-      if (_state != result.state) {
-        _setState(result.state);
-      }
-      
-      LoggerService.debug('ElectrodeValidationProvider: Validation result: ${result.state}, valid: ${result.isValid}');
-    } catch (e) {
-      LoggerService.error('ElectrodeValidationProvider: Error during validation: $e');
-      _setState(ElectrodeValidationState.connectionLost);
-    }
-  }
-  
-  /// Handle data stream errors
-  void _onDataStreamError(dynamic error) {
-    LoggerService.error('ElectrodeValidationProvider: Data stream error: $error');
-    _setState(ElectrodeValidationState.connectionLost);
-  }
-  
-  /// Handle data stream completion
-  void _onDataStreamComplete() {
-    LoggerService.warning('ElectrodeValidationProvider: Data stream completed unexpectedly');
-    _setState(ElectrodeValidationState.connectionLost);
-  }
-  
-  /// Update state and notify listeners
-  void _setState(ElectrodeValidationState newState) {
-    if (_state != newState) {
-      final oldState = _state;
-      _state = newState;
-      
-      LoggerService.info('ElectrodeValidationProvider: State changed from $oldState to $newState');
-      
-      // Update result if moving to connection lost
-      if (newState == ElectrodeValidationState.connectionLost) {
-        _lastResult = ValidationResult.connectionLost();
-      } else if (newState == ElectrodeValidationState.insufficientData) {
-        _lastResult = ValidationResult.insufficientData();
-      }
-      
+      // Handle errors during validation
+      debugPrint('Error during electrode validation: $e');
+      _lastValidationResult = ValidationResult.connectionLost();
+      _updateState(ValidationState.connectionLost);
       notifyListeners();
     }
   }
   
-  /// Force immediate validation (useful for testing)
-  void forceValidation() {
-    if (isValidating) {
-      _performValidation();
+  /// Reset validation state to idle
+  void resetValidation() {
+    _updateState(ValidationState.idle);
+    _lastValidationResult = null;
+    notifyListeners();
+  }
+  
+  /// Check data availability and update state accordingly
+  void checkDataAvailability() {
+    if (!_isInitialized) return;
+    
+    _updateStateBasedOnDataAvailability();
+    notifyListeners();
+  }
+  
+  /// Update the current state based on data availability
+  void _updateStateBasedOnDataAvailability() {
+    if (_eegDataProvider == null) {
+      _updateState(ValidationState.connectionLost);
+      return;
+    }
+    
+    // Only update state if currently idle or collecting data
+    if (_currentState == ValidationState.idle || _currentState == ValidationState.collectingData) {
+      if (canStartValidation) {
+        _updateState(ValidationState.idle);
+      } else {
+        _updateState(ValidationState.collectingData);
+      }
     }
   }
   
-  /// Get debug information about validation state
-  Map<String, dynamic> getDebugInfo() {
-    return {
-      'state': _state.toString(),
-      'isValidating': isValidating,
-      'hasStarted': hasStarted,
-      'timeSinceStart': timeSinceStart?.inSeconds,
-      'totalSamplesProcessed': _totalSamplesProcessed,
-      'lastResult': _lastResult?.toString(),
-      'processorInfo': _processor.getDebugInfo(),
-    };
+  /// Update the current state
+  void _updateState(ValidationState newState) {
+    if (_currentState != newState) {
+      _currentState = newState;
+      debugPrint('Electrode validation state changed to: $newState');
+    }
   }
   
+  /// Get debug information for the current validation state
+  Map<String, dynamic> getDebugInfo() {
+    final Map<String, dynamic> debugInfo = {
+      'currentState': _currentState.toString(),
+      'hasResult': hasValidationResult,
+      'canStart': canStartValidation,
+      'isInitialized': _isInitialized,
+    };
+    
+    if (_lastValidationResult != null) {
+      debugInfo['lastResult'] = {
+        'isValid': _lastValidationResult!.isValid,
+        'message': _lastValidationResult!.message,
+        'timestamp': _lastValidationResult!.timestamp.toIso8601String(),
+        'statistics': {
+          'variance': _lastValidationResult!.statistics.variance,
+          'minValue': _lastValidationResult!.statistics.minValue,
+          'maxValue': _lastValidationResult!.statistics.maxValue,
+          'sampleCount': _lastValidationResult!.statistics.sampleCount,
+          'validRangeCount': _lastValidationResult!.statistics.validRangeCount,
+          'validRangePercentage': _lastValidationResult!.statistics.validRangePercentage,
+        },
+      };
+    }
+    
+    if (_eegDataProvider != null) {
+      final samples = _eegDataProvider!.dataProcessor.getLatestJsonSamples();
+      debugInfo['availableSamples'] = samples.length;
+      debugInfo['requiredSamples'] = ValidationConstants.minSamplesRequired;
+    }
+    
+    return debugInfo;
+  }
+  
+  /// Dispose of resources
   @override
   void dispose() {
-    LoggerService.info('ElectrodeValidationProvider: Disposing');
-    stopValidation();
+    _eegDataProvider = null;
     super.dispose();
   }
 } 

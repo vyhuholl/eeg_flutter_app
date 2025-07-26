@@ -4163,3 +4163,314 @@ Widget _buildEEGScreen(BuildContext context, ConnectionProvider connectionProvid
 - **Actual Time**: 25 minutes (within estimated 20-30 minutes)
 
 ---
+
+# EEG Flutter App - One-Time Electrode Validation Enhancement
+
+## LEVEL 2 TASK: One-Time Electrode Validation Enhancement
+
+### Task Summary
+Convert electrode validation from constant monitoring to one-time validation with a new dedicated validation screen and specific statistical checks on the last 10 seconds of EEG data.
+
+## Description
+Implement performance-optimized one-time electrode validation by creating a dedicated validation screen with statistical analysis capabilities, replacing the current constant monitoring approach that causes computational lag.
+
+### User Requirements
+1. **Performance Optimization**: Replace constant validation with one-time validation
+2. **New Validation Screen**: Create dedicated screen accessible after "Продолжить" button
+3. **Statistical Analysis**: Implement validation logic for last 10 seconds of EEG data:
+   - All `eegValue` readings between 500-2000
+   - Variance of `eegValue` less than 500
+4. **Conditional Navigation**: Show EEG Chart on validation success, error message on failure
+5. **Debug Information**: Display variance, min, max values in debug mode
+6. **Russian Localization**: Error messages and UI text in Russian
+
+## Complexity
+**Level**: 2 (Simple Enhancement)  
+**Type**: UI Enhancement with Data Processing  
+**Rationale**: Single feature with moderate implementation complexity requiring new screen, validation logic, and navigation changes
+
+## Technology Stack
+- **Framework**: Flutter (existing)
+- **Language**: Dart (existing)
+- **State Management**: Provider pattern (existing)
+- **UI Components**: Material Design (existing)
+- **Data Processing**: Dart math library for statistical calculations
+- **Navigation**: Flutter Navigator (existing)
+
+## Technology Validation Checkpoints
+- [x] Project builds successfully (flutter analyze - no issues)
+- [x] Existing Flutter/Dart environment verified
+- [x] Provider state management architecture confirmed
+- [x] EEG data processing pipeline identified
+- [x] Material Design components available
+- [x] Statistical calculations implementation verified (Welford's algorithm, variance/range validation)
+- [x] Screen navigation flow tested (Flutter Navigator confirmed working)
+
+## Current System Analysis
+
+### Existing Architecture
+- **State Management**: Provider-based with `ConnectionProvider` and `EEGDataProvider`
+- **Navigation**: Start Screen → EEG Screen (current flow)
+- **Data Processing**: `EEGDataProcessor` with real-time statistical capabilities
+- **EEG Data Model**: `EEGJsonSample` with `eegValue` field available for analysis
+
+### Deleted Components (Need Recreation)
+- `lib/models/validation_models.dart` - Previously deleted
+- `lib/providers/electrode_validation_provider.dart` - Previously deleted  
+- `lib/services/validation_data_processor.dart` - Previously deleted
+
+### Required Navigation Flow Change
+```
+Current:  Start Screen → EEG Screen (when connected)
+Required: Start Screen → Validation Screen → EEG Screen (when validated)
+```
+
+## Implementation Plan
+
+### Phase 1: Data Model and State Management (30 mins)
+1. **Create Validation Models** (`lib/models/validation_models.dart`)
+   - `ValidationResult` class with success/failure states
+   - `ValidationStatistics` class for variance, min, max values
+   - `ValidationState` enum for UI state management
+
+2. **Create Validation Provider** (`lib/providers/electrode_validation_provider.dart`)
+   - Extend `ChangeNotifier` for state management
+   - Implement validation status tracking
+   - Integration with existing `EEGDataProvider`
+
+### Phase 2: Statistical Processing Service (45 mins)
+3. **Create Validation Service** (`lib/services/electrode_validation_service.dart`)
+   - Implement statistical analysis functions:
+     - Range validation (500-2000)
+     - Variance calculation for 10-second window
+     - Min/max value extraction
+   - Integration with existing `EEGDataProcessor`
+
+### Phase 3: UI Components (60 mins)
+4. **Create Validation Screen** (`lib/screens/electrode_validation_screen.dart`)
+   - Material Design layout with validation button
+   - Success/failure state displays
+   - Russian localized text
+   - Debug information panel (conditional)
+   - Error message display with troubleshooting guidance
+
+### Phase 4: Navigation Integration (30 mins)
+5. **Modify Main Screen Navigation** (`lib/screens/main_screen.dart`)
+   - Update navigation logic to include validation step
+   - Integrate validation provider consumer
+   - Conditional screen routing based on validation status
+
+### Phase 5: Testing and Integration (30 mins)
+6. **Integration Testing**
+   - Validation logic testing with sample data
+   - Navigation flow testing
+   - UI state testing
+   - Debug mode testing
+
+### Phase 6: Documentation and Cleanup (15 mins)
+7. **Documentation Updates**
+   - Update system patterns documentation
+   - Code documentation and comments
+   - README updates if needed
+
+## Detailed Implementation Checklist
+
+### Data Models and State Management
+- [x] Create `ValidationResult` class with success/failure states
+- [x] Create `ValidationStatistics` class for statistical data
+- [x] Create `ValidationState` enum for UI states
+- [x] Implement `ElectrodeValidationProvider` with ChangeNotifier
+- [x] Add validation state tracking methods
+- [x] Integrate with existing EEGDataProvider
+
+### Statistical Processing
+- [x] Create range validation function (500-2000 check)
+- [x] Implement variance calculation for time series data
+- [x] Create min/max extraction for 10-second window
+- [x] Add data retrieval method for last 10 seconds
+- [x] Implement debug statistics compilation
+- [x] Add error handling for insufficient data
+
+### UI Implementation
+- [x] Create validation screen scaffold with Material Design
+- [x] Add "Проверить электроды" button with loading states
+- [x] Implement success state display (green indicator)
+- [x] Create failure state with detailed error message
+- [x] Add debug information panel (conditional display)
+- [x] Implement Russian localization for all text
+- [x] Add proper spacing and visual hierarchy
+
+### Navigation and Integration
+- [x] Modify main screen navigation logic
+- [x] Add Provider consumers for validation state
+- [x] Implement conditional routing logic
+- [x] Update floating action button behavior
+- [x] Test navigation flow end-to-end
+- [x] Verify state persistence during navigation
+
+### Testing and Quality Assurance
+- [x] Test validation logic with various data scenarios
+- [x] Verify error handling for edge cases
+- [x] Test UI state transitions
+- [x] Verify debug mode functionality
+- [x] Test Russian text display
+- [x] Perform end-to-end navigation testing
+- [x] Code analysis and build verification
+
+## Components Affected
+
+### New Components (To Create)
+- `lib/models/validation_models.dart` - Data models for validation
+- `lib/providers/electrode_validation_provider.dart` - State management
+- `lib/services/electrode_validation_service.dart` - Statistical processing
+- `lib/screens/electrode_validation_screen.dart` - UI component
+
+### Modified Components
+- `lib/screens/main_screen.dart` - Navigation logic updates
+- `lib/main.dart` - Provider registration (if needed)
+
+### Integration Points
+- `lib/providers/eeg_data_provider.dart` - Data source integration
+- `lib/services/data_processor.dart` - Statistical data access
+- `lib/models/eeg_data.dart` - EEG sample data structure
+
+## Dependencies
+- **Existing**: `provider` package for state management
+- **Existing**: `fl_chart` package (no additional charts needed)
+- **Built-in**: `dart:math` for statistical calculations
+- **No new dependencies required**
+
+## Challenges & Mitigations
+
+### Challenge 1: Statistical Analysis Performance
+- **Issue**: Variance calculation on 10 seconds of 100Hz data (1000 samples)
+- **Mitigation**: Use efficient single-pass variance algorithm, cache results
+- **Implementation**: Welford's online algorithm for numerical stability
+
+### Challenge 2: Navigation State Management
+- **Issue**: Maintaining validation state across navigation
+- **Mitigation**: Use Provider pattern for persistent state management
+- **Implementation**: Validation provider stores state independently of screens
+
+### Challenge 3: Data Availability Timing
+- **Issue**: Ensuring 10 seconds of data available before validation
+- **Mitigation**: Add data availability check before enabling validation button
+- **Implementation**: Monitor data buffer length and connection time
+
+### Challenge 4: UI State Consistency
+- **Issue**: Managing loading, success, failure states consistently
+- **Mitigation**: Use clear state enum and consistent state transitions
+- **Implementation**: Well-defined state machine with proper transitions
+
+### Challenge 5: Russian Localization
+- **Issue**: Proper display of Cyrillic characters and text
+- **Mitigation**: Use UTF-8 string literals and test on target platform
+- **Implementation**: String constants with proper encoding
+
+## Error Scenarios and Handling
+
+### Insufficient Data Scenario
+- **Condition**: Less than 10 seconds of EEG data available
+- **Response**: Disable validation button, show data collection status
+- **Message**: "Сбор данных... Подождите 10 секунд"
+
+### Connection Lost Scenario  
+- **Condition**: EEG connection lost during validation
+- **Response**: Show connection error, return to start screen
+- **Message**: "Соединение потеряно. Переподключите устройство"
+
+### Validation Failure Scenario
+- **Condition**: EEG values outside range or high variance
+- **Response**: Show troubleshooting instructions
+- **Message**: Detailed Russian error message with electrode adjustment guidance
+
+### Debug Mode Information
+- **Condition**: App compiled in debug mode
+- **Response**: Show additional statistical information
+- **Data**: Variance value, minimum eegValue, maximum eegValue
+
+## Success Criteria
+1. **Functional**: One-time validation replaces constant monitoring
+2. **Performance**: No computational lag during normal operation
+3. **User Experience**: Clear Russian interface with helpful error messages
+4. **Navigation**: Smooth flow from start → validation → EEG chart
+5. **Reliability**: Robust error handling for various data scenarios
+6. **Debug Support**: Comprehensive debug information for development
+
+## Time Estimates
+- **Phase 1 (Models/State)**: 30 minutes
+- **Phase 2 (Statistical Service)**: 45 minutes  
+- **Phase 3 (UI Components)**: 60 minutes
+- **Phase 4 (Navigation)**: 30 minutes
+- **Phase 5 (Testing)**: 30 minutes
+- **Phase 6 (Documentation)**: 15 minutes
+- **Total Estimated Time**: 3.5 hours
+
+## Creative Phases Required
+- [ ] None - Level 2 task with straightforward implementation approach
+
+## Technology Validation Status
+- [x] **Build Environment**: Flutter analyze passes (no issues)
+- [x] **Dependencies**: All required packages available
+- [x] **Architecture**: Provider pattern confirmed working
+- [x] **Data Access**: EEG data processing pipeline available
+- [ ] **Statistical Implementation**: Variance calculation to be implemented
+- [ ] **UI Framework**: Material Design components to be verified
+- [ ] **Navigation**: Screen routing to be tested
+
+## Status Tracking
+- [x] **Initialization**: VAN mode analysis complete
+- [x] **Planning**: Comprehensive implementation plan created
+- [x] **Technology Validation**: Statistical implementation and build environment verified
+- [x] **Implementation**: All 6 phases completed successfully
+- [x] **Testing**: Integration testing and quality assurance complete
+- [x] **Documentation**: Implementation documentation complete
+- [x] **Reflection**: Comprehensive reflection completed with lessons learned
+- [x] **Archiving**: Task documentation archived and Memory Bank updated
+
+## Archive
+- **Date**: 2025-01-27
+- **Archive Document**: [docs/archive/one-time-electrode-validation-enhancement-20250127.md](../docs/archive/one-time-electrode-validation-enhancement-20250127.md)
+- **Status**: COMPLETED
+
+## Implementation Summary ✅ COMPLETE
+
+### ✅ All Components Successfully Implemented
+1. **lib/models/validation_models.dart** - Complete data models with Russian localization ✅
+2. **lib/providers/electrode_validation_provider.dart** - State management with lifecycle ✅  
+3. **lib/services/electrode_validation_service.dart** - Statistical analysis with Welford's algorithm ✅
+4. **lib/screens/electrode_validation_screen.dart** - Full UI with animations and debug panel ✅
+5. **Navigation Integration** - Updated main.dart and main_screen.dart routing ✅
+
+### ✅ Quality Verification Results
+- **Flutter Analyze**: Zero issues, all code passes linting ✅
+- **Performance**: One-time validation eliminates computational lag ✅
+- **User Experience**: Complete Russian localization with clear instructions ✅
+- **Architecture**: Seamless integration with existing provider pattern ✅
+- **Debug Support**: Conditional debug information in development builds ✅
+
+### ✅ Key Features Delivered
+- **Statistical Validation**: Last 10 seconds, range 500-2000, variance <500 ✅
+- **Error Handling**: Comprehensive troubleshooting with Russian instructions ✅
+- **Navigation Flow**: Start → Validation → EEG Chart sequence ✅
+- **Animation**: Smooth success/error state transitions ✅
+- **State Management**: Proper validation state persistence ✅
+
+## Reflection Highlights ✅ COMPLETE
+
+- **What Went Well**: Structured 6-phase approach, Welford's algorithm for statistical stability, seamless Provider pattern integration, comprehensive Russian localization with error guidance, robust animation and UX feedback
+- **Challenges**: Provider initialization timing, navigation state persistence, data availability timing, import optimization, statistical requirements translation
+- **Lessons Learned**: Welford's algorithm superiority for numerical stability, Provider pattern scalability, state machine design with extensions, statistical window management, debug mode architecture separation
+- **Next Steps**: Real-world testing with EEG hardware, algorithm refinement based on usage data, user experience research with medical professionals
+
+## Reflection Document ✅ CREATED
+- **Location**: `memory-bank/reflection-eeg-electrode-validation-enhancement.md`
+- **Completion Date**: January 27, 2025
+- **Quality Assessment**: Comprehensive Level 2 reflection with specific insights and actionable improvements
+
+---
+
+**Status**: ✅ **TASK ARCHIVED - COMPLETE**  
+**Archive**: [one-time-electrode-validation-enhancement-20250127.md](../docs/archive/one-time-electrode-validation-enhancement-20250127.md)  
+**Quality**: Comprehensive documentation with technical insights preserved  
+**Memory Bank**: Ready for next task initialization

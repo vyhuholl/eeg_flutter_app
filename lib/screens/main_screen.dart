@@ -3,9 +3,9 @@ import 'package:provider/provider.dart';
 import '../providers/eeg_data_provider.dart';
 import '../providers/connection_provider.dart';
 import '../providers/electrode_validation_provider.dart';
-import '../models/validation_models.dart';
 import '../widgets/eeg_chart.dart';
 import 'meditation_selection_screen.dart';
+import 'electrode_validation_screen.dart';
 
 /// Main screen of the EEG Flutter app with start screen and EEG chart
 class MainScreen extends StatefulWidget {
@@ -23,6 +23,8 @@ class _MainScreenState extends State<MainScreen> {
         // Navigation logic based on connection and validation state
         if (!connectionProvider.isConnected) {
           return _buildStartScreen(context, connectionProvider);
+        } else if (!validationProvider.isLastValidationSuccessful) {
+          return const ElectrodeValidationScreen();
         } else {
           return _buildEEGScreen(context, connectionProvider);
         }
@@ -106,16 +108,9 @@ class _MainScreenState extends State<MainScreen> {
   Widget _buildEEGScreen(BuildContext context, ConnectionProvider connectionProvider) {
     return Scaffold(
       backgroundColor: Colors.black,
-      body: Consumer2<EEGDataProvider, ElectrodeValidationProvider>(
-        builder: (context, eegProvider, validationProvider, child) {
+      body: Consumer<EEGDataProvider>(
+        builder: (context, eegProvider, child) {
           final isReceivingData = eegProvider.isReceivingJsonData;
-          
-          // Start electrode validation if not already started and we're receiving data
-          if (isReceivingData && !validationProvider.isValidating) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              validationProvider.startValidation(eegProvider);
-            });
-          }
           
           return SafeArea(
             child: Padding(
@@ -124,7 +119,7 @@ class _MainScreenState extends State<MainScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Status indicator in top left corner
-                  _buildConnectionStatus(validationProvider.state),
+                  _buildConnectionStatus(isReceivingData),
                   
                   const SizedBox(height: 20),
                   
@@ -209,60 +204,24 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
-  Widget _buildConnectionStatus(ElectrodeValidationState validationState) {
-    Color statusColor;
-    String statusText;
-    
-    switch (validationState) {
-      case ElectrodeValidationState.initializing:
-        statusColor = Colors.white;
-        statusText = 'Инициализация проверки электродов...';
-        break;
-      case ElectrodeValidationState.collectingData:
-        statusColor = Colors.white;
-        statusText = 'Сбор данных для проверки...';
-        break;
-      case ElectrodeValidationState.validating:
-        statusColor = Colors.white;
-        statusText = 'Проверка качества соединения...';
-        break;
-      case ElectrodeValidationState.valid:
-        statusColor = Colors.green;
-        statusText = 'Электроды подключены';
-        break;
-      case ElectrodeValidationState.invalid:
-        statusColor = Colors.red;
-        statusText = 'Проблемы с контактом электродов.\nУбедитесь, что между кожей и электродами нет волос.\nЕсли проблема продолжается, попробуйте аккуратно поправить один из электродов\nлибо же смочить контакты водой.';
-        break;
-      case ElectrodeValidationState.insufficientData:
-        statusColor = Colors.red;
-        statusText = 'Недостаточно данных для проверки.\nУбедитесь, что устройство подключено.';
-        break;
-      case ElectrodeValidationState.connectionLost:
-        statusColor = Colors.red;
-        statusText = 'Потеряно соединение с устройством.\nПроверьте подключение.';
-        break;
-    }
-    
+  Widget _buildConnectionStatus(bool isReceivingData) {
     return Row(
       children: [
         Container(
           width: 8,
           height: 8,
           decoration: BoxDecoration(
-            color: statusColor,
+            color: isReceivingData ? Colors.green : Colors.red,
             shape: BoxShape.circle,
           ),
         ),
         const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            statusText,
-            style: TextStyle(
-              color: statusColor,
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-            ),
+        Text(
+          isReceivingData ? 'Электроды подключены' : 'Электроды не подключены',
+          style: TextStyle(
+            color: isReceivingData ? Colors.green : Colors.red,
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
           ),
         ),
       ],
@@ -322,6 +281,10 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   void _connectToDevice(ConnectionProvider connectionProvider) {
+    // Reset validation state when starting a new connection
+    final validationProvider = context.read<ElectrodeValidationProvider>();
+    validationProvider.resetValidation();
+    
     connectionProvider.connect(
       address: '0.0.0.0',
       port: 2000,
@@ -330,6 +293,10 @@ class _MainScreenState extends State<MainScreen> {
 
   void _disconnectFromDevice() {
     final connectionProvider = context.read<ConnectionProvider>();
+    final validationProvider = context.read<ElectrodeValidationProvider>();
+    
+    // Reset validation state when disconnecting
+    validationProvider.resetValidation();
     connectionProvider.disconnect();
   }
 
