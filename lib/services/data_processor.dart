@@ -53,7 +53,7 @@ class EEGDataProcessor {
   /// Update EEG time series data for JSON samples
   void _updateEEGTimeSeriesData(EEGJsonSample sample) {
     final timestamp = sample.absoluteTimestamp.millisecondsSinceEpoch.toDouble();
-    _eegTimeSeriesData.add(FlSpot(timestamp, sample.eegValue));
+    _eegTimeSeriesData.add(FlSpot(timestamp, sample.eegValue.toDouble()));
     
     // Limit the size to prevent unbounded growth (keep same number as buffer)
     if (_eegTimeSeriesData.length > _config.bufferSize) {
@@ -82,51 +82,6 @@ class EEGDataProcessor {
     _processingTimer = null;
     _uiUpdateTimer?.cancel();
     _uiUpdateTimer = null;
-  }
-
-  /// Apply noise filtering to samples
-  List<EEGJsonSample> applyFiltering(List<EEGJsonSample> samples) {
-    if (samples.isEmpty) return samples;
-    
-    final filtered = <EEGJsonSample>[];
-    
-    for (final sample in samples) {
-      // Apply simple low-pass filter (basic noise reduction)
-      final filteredEegValue = _applyLowPassFilter(sample.eegValue);
-      
-      filtered.add(EEGJsonSample(
-        timeDelta: sample.timeDelta,
-        eegValue: filteredEegValue,
-        absoluteTimestamp: sample.absoluteTimestamp,
-        sequenceNumber: sample.sequenceNumber,
-        d1: sample.d1,
-        t1: sample.t1,
-        t2: sample.t2,
-        a1: sample.a1,
-        a2: sample.a2,
-        b1: sample.b1,
-        b2: sample.b2,
-        b3: sample.b3,
-        g1: sample.g1,
-        theta: sample.theta,
-        alpha: sample.alpha,
-        beta: sample.beta,
-        gamma: sample.gamma,
-        btr: sample.btr,
-        atr: sample.atr,
-        pope: sample.pope,
-        gtr: sample.gtr,
-        rab: sample.rab,
-      ));
-    }
-    
-    return filtered;
-  }
-
-  /// Simple low-pass filter implementation
-  double _applyLowPassFilter(double value) {
-    // Simple moving average or other filter
-    return value; // Placeholder - implement actual filtering if needed
   }
 
   /// Get latest JSON samples (defaults to all available data up to 120 seconds worth)

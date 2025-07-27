@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
-import 'package:archive/archive.dart';
+// import 'package:archive/archive.dart';
 import '../widgets/eeg_chart.dart';
 import '../providers/eeg_data_provider.dart';
 import '../models/eeg_data.dart';
@@ -48,7 +48,7 @@ class _MeditationScreenState extends State<MeditationScreen> {
   static const int _flushIntervalMs = 1000; // More frequent flushes (1 second)
   
   // Pre-allocated lists to avoid garbage collection
-  final List<String> _csvFieldsBuffer = List.filled(22, '');
+  final List<String> _csvFieldsBuffer = List.filled(12, '');
   
   // Batch processing
   final List<EEGJsonSample> _pendingSamples = [];
@@ -208,7 +208,7 @@ class _MeditationScreenState extends State<MeditationScreen> {
       _csvFile = File(csvPath);
       
       // Write header once
-      const csvHeader = 'timeDelta,eegValue,absoluteTimestamp,sequenceNumber,d1,t1,t2,a1,a2,b1,b2,b3,g1,theta,alpha,beta,gamma,btr,atr,pope,gtr,rab\n';
+      const csvHeader = 'eegValue,absoluteTimestamp,delta,theta,alpha,beta,gamma,btr,atr,pope,gtr,rab\n';
       await _csvFile!.writeAsString(csvHeader, mode: FileMode.write);
       
       _isCsvLogging = true;
@@ -275,28 +275,18 @@ class _MeditationScreenState extends State<MeditationScreen> {
         final timestampMs = sample.absoluteTimestamp.millisecondsSinceEpoch;
         
         // Pre-populate fields array to avoid repeated string operations
-        _csvFieldsBuffer[0] = sample.timeDelta.toString();
-        _csvFieldsBuffer[1] = sample.eegValue.toString();
-        _csvFieldsBuffer[2] = timestampMs.toString();
-        _csvFieldsBuffer[3] = sample.sequenceNumber.toString();
-        _csvFieldsBuffer[4] = sample.d1.toString();
-        _csvFieldsBuffer[5] = sample.t1.toString();
-        _csvFieldsBuffer[6] = sample.t2.toString();
-        _csvFieldsBuffer[7] = sample.a1.toString();
-        _csvFieldsBuffer[8] = sample.a2.toString();
-        _csvFieldsBuffer[9] = sample.b1.toString();
-        _csvFieldsBuffer[10] = sample.b2.toString();
-        _csvFieldsBuffer[11] = sample.b3.toString();
-        _csvFieldsBuffer[12] = sample.g1.toString();
-        _csvFieldsBuffer[13] = sample.theta.toString();
-        _csvFieldsBuffer[14] = sample.alpha.toString();
-        _csvFieldsBuffer[15] = sample.beta.toString();
-        _csvFieldsBuffer[16] = sample.gamma.toString();
-        _csvFieldsBuffer[17] = sample.btr.toString();
-        _csvFieldsBuffer[18] = sample.atr.toString();
-        _csvFieldsBuffer[19] = sample.pope.toString();
-        _csvFieldsBuffer[20] = sample.gtr.toString();
-        _csvFieldsBuffer[21] = sample.rab.toString();
+        _csvFieldsBuffer[0] = sample.eegValue.toString();
+        _csvFieldsBuffer[1] = timestampMs.toString();
+        _csvFieldsBuffer[2] = sample.delta.toString();
+        _csvFieldsBuffer[3] = sample.theta.toString();
+        _csvFieldsBuffer[4] = sample.alpha.toString();
+        _csvFieldsBuffer[5] = sample.beta.toString();
+        _csvFieldsBuffer[6] = sample.gamma.toString();
+        _csvFieldsBuffer[7] = sample.btr.toString();
+        _csvFieldsBuffer[8] = sample.atr.toString();
+        _csvFieldsBuffer[9] = sample.pope.toString();
+        _csvFieldsBuffer[10] = sample.gtr.toString();
+        _csvFieldsBuffer[11] = sample.rab.toString();
         
         // Join fields efficiently
         batchBuffer.write(_csvFieldsBuffer.join(','));
@@ -349,10 +339,10 @@ class _MeditationScreenState extends State<MeditationScreen> {
     // Flush any remaining buffer data
     _flushCsvBuffer();
     
-    // Compress and replace the CSV file
-    if (_csvFile != null) {
-      _compressAndReplaceFile(_csvFile!);
-    }
+    // // Compress and replace the CSV file
+    // if (_csvFile != null) {
+    //   _compressAndReplaceFile(_csvFile!);
+    // }
     
     // Cancel timer and cleanup
     _csvFlushTimer?.cancel();
@@ -363,78 +353,78 @@ class _MeditationScreenState extends State<MeditationScreen> {
     _pendingSamples.clear();
   }
 
-  /// Compresses the CSV file using GZIP and replaces the original with compressed version
-  Future<void> _compressAndReplaceFile(File originalFile) async {
-    try {
-      // Check if file exists
-      if (!await originalFile.exists()) {
-        await LoggerService.info('CSV file does not exist, skipping compression: ${originalFile.path}');
-        return;
-      }
+  // /// Compresses the CSV file using GZIP and replaces the original with compressed version
+  // Future<void> _compressAndReplaceFile(File originalFile) async {
+  //   try {
+  //     // Check if file exists
+  //     if (!await originalFile.exists()) {
+  //       await LoggerService.info('CSV file does not exist, skipping compression: ${originalFile.path}');
+  //       return;
+  //     }
       
-      await LoggerService.info('Starting compression of CSV file: ${originalFile.path}');
+  //     await LoggerService.info('Starting compression of CSV file: ${originalFile.path}');
       
-      // Read original file as bytes
-      final originalBytes = await originalFile.readAsBytes();
-      final originalSize = originalBytes.length;
+  //     // Read original file as bytes
+  //     final originalBytes = await originalFile.readAsBytes();
+  //     final originalSize = originalBytes.length;
       
-      if (originalSize == 0) {
-        await LoggerService.info('CSV file is empty, skipping compression');
-        return;
-      }
+  //     if (originalSize == 0) {
+  //       await LoggerService.info('CSV file is empty, skipping compression');
+  //       return;
+  //     }
       
-      // Compress using GZIP
-      final compressedData = GZipEncoder().encode(originalBytes);
-      if (compressedData.isEmpty) {
-        await LoggerService.error('GZIP compression failed - no compressed data generated');
-        return;
-      }
+  //     // Compress using GZIP
+  //     final compressedData = GZipEncoder().encode(originalBytes);
+  //     if (compressedData.isEmpty) {
+  //       await LoggerService.error('GZIP compression failed - no compressed data generated');
+  //       return;
+  //     }
       
-      // Create compressed file path (.csv.gz)
-      final compressedPath = '${originalFile.path}.gz';
-      final compressedFile = File(compressedPath);
+  //     // Create compressed file path (.csv.gz)
+  //     final compressedPath = '${originalFile.path}.gz';
+  //     final compressedFile = File(compressedPath);
       
-      // Write compressed data
-      await compressedFile.writeAsBytes(compressedData);
+  //     // Write compressed data
+  //     await compressedFile.writeAsBytes(compressedData);
       
-      // Verify compressed file was created successfully
-      if (!await compressedFile.exists()) {
-        await LoggerService.error('Failed to create compressed file: $compressedPath');
-        return;
-      }
+  //     // Verify compressed file was created successfully
+  //     if (!await compressedFile.exists()) {
+  //       await LoggerService.error('Failed to create compressed file: $compressedPath');
+  //       return;
+  //     }
       
-      final compressedSize = compressedData.length;
-      final compressionRatio = ((originalSize - compressedSize) / originalSize * 100);
+  //     final compressedSize = compressedData.length;
+  //     final compressionRatio = ((originalSize - compressedSize) / originalSize * 100);
       
-      // Test decompression to verify data integrity
-      try {
-        final decompressedData = GZipDecoder().decodeBytes(compressedData);
-        final dataIntact = decompressedData.length == originalBytes.length;
+  //     // Test decompression to verify data integrity
+  //     try {
+  //       final decompressedData = GZipDecoder().decodeBytes(compressedData);
+  //       final dataIntact = decompressedData.length == originalBytes.length;
         
-        if (!dataIntact) {
-          await LoggerService.error('Data integrity check failed - decompressed size mismatch');
-          return;
-        }
-      } catch (e) {
-        await LoggerService.error('Data integrity check failed - decompression error: $e');
-        return;
-      }
+  //       if (!dataIntact) {
+  //         await LoggerService.error('Data integrity check failed - decompressed size mismatch');
+  //         return;
+  //       }
+  //     } catch (e) {
+  //       await LoggerService.error('Data integrity check failed - decompression error: $e');
+  //       return;
+  //     }
       
-      // Delete original file only after successful compression and verification
-      await originalFile.delete();
+  //     // Delete original file only after successful compression and verification
+  //     await originalFile.delete();
       
-      await LoggerService.info('CSV compression completed successfully:');
-      await LoggerService.info('  Original size: ${(originalSize / 1024 / 1024).toStringAsFixed(1)} MB');
-      await LoggerService.info('  Compressed size: ${(compressedSize / 1024 / 1024).toStringAsFixed(1)} MB');
-      await LoggerService.info('  Compression ratio: ${compressionRatio.toStringAsFixed(1)}%');
-      await LoggerService.info('  Compressed file: $compressedPath');
+  //     await LoggerService.info('CSV compression completed successfully:');
+  //     await LoggerService.info('  Original size: ${(originalSize / 1024 / 1024).toStringAsFixed(1)} MB');
+  //     await LoggerService.info('  Compressed size: ${(compressedSize / 1024 / 1024).toStringAsFixed(1)} MB');
+  //     await LoggerService.info('  Compression ratio: ${compressionRatio.toStringAsFixed(1)}%');
+  //     await LoggerService.info('  Compressed file: $compressedPath');
       
-    } catch (e) {
-      await LoggerService.error('CSV compression failed: $e');
-      await LoggerService.info('Original CSV file preserved due to compression failure');
-      // Original file is preserved if compression fails
-    }
-  }
+  //   } catch (e) {
+  //     await LoggerService.error('CSV compression failed: $e');
+  //     await LoggerService.info('Original CSV file preserved due to compression failure');
+  //     // Original file is preserved if compression fails
+  //   }
+  // }
 
   Widget _buildLegend() {
     return Column(

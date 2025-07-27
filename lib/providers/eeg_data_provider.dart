@@ -210,13 +210,6 @@ class EEGDataProvider with ChangeNotifier {
     return _chartConfig.refreshRate;
   }
 
-  /// Filter controls
-  void applyFilter() {
-    final filtered = _dataProcessor.applyFiltering(_latestJsonSamples);
-    _latestJsonSamples = filtered;
-    notifyListeners();
-  }
-
   /// Data management
   void clearData() {
     _latestJsonSamples = [];

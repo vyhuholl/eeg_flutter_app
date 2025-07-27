@@ -46,14 +46,14 @@ class ElectrodeValidationService {
   }
   
   /// Calculate comprehensive statistics for EEG values using Welford's algorithm
-  ValidationStatistics _calculateStatistics(List<double> values) {
+  ValidationStatistics _calculateStatistics(List<int> values) {
     if (values.isEmpty) {
       return ValidationStatistics.empty();
     }
     
     // Initialize values
-    double minVal = values.first;
-    double maxVal = values.first;
+    int minVal = values.first;
+    int maxVal = values.first;
     int validRangeCount = 0;
     
     // Calculate min, max, and valid range count in single pass
@@ -148,7 +148,6 @@ class ElectrodeValidationService {
       'sampleCount': statistics.sampleCount,
       'hasSufficientData': hasSufficientData(samples),
       'variance': statistics.variance,
-      'standardDeviation': statistics.standardDeviation,
       'minValue': statistics.minValue,
       'maxValue': statistics.maxValue,
       'validRangeCount': statistics.validRangeCount,
