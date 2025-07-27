@@ -379,7 +379,7 @@ class ExeManager {
           '-NoProfile',
           '-ExecutionPolicy', 'Bypass',
           '-Command',
-          'Get-Process | Where-Object {\$_.MainWindowTitle -like "*$windowTitlePattern*"} | Select-Object -First 1'
+          'Get-Process | Where-Object {\$_.MainWindowTitle -like "$windowTitlePattern"} | Select-Object -First 1'
         ],
         runInShell: false,
       );
@@ -591,7 +591,7 @@ class _SplashScreenState extends State<SplashScreen> {
       });
 
       // Check if window is already open first
-      final isAlreadyOpen = await ExeManager._isWindowOpen('EasyEEG BCI');
+      final isAlreadyOpen = await ExeManager._isWindowOpen('Нейроинтерфейс EasyEEG BCI');
       if (isAlreadyOpen) {
         setState(() {
           _statusMessage = 'Окно EasyEEG BCI уже открыто. Запускаем приложение...';
@@ -626,7 +626,7 @@ class _SplashScreenState extends State<SplashScreen> {
           // Wait 5000 milliseconds before checking
           await Future.delayed(const Duration(milliseconds: 5000));
           
-          windowFound = await ExeManager._isWindowOpen('EasyEEG BCI');
+          windowFound = await ExeManager._isWindowOpen('Нейроинтерфейс EasyEEG BCI');
           
           if (windowFound) {
             setState(() {
