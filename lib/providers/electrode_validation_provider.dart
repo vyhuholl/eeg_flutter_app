@@ -39,7 +39,7 @@ class ElectrodeValidationProvider with ChangeNotifier {
   bool get canStartValidation {
     if (_eegDataProvider == null) return false;
     
-    // Check if we have sufficient data for 10-second validation
+    // Check if we have sufficient data for 5-second validation
     final samples = _eegDataProvider!.dataProcessor.getLatestJsonSamples();
     return samples.length >= ValidationConstants.minSamplesRequired;
   }
@@ -77,10 +77,10 @@ class ElectrodeValidationProvider with ChangeNotifier {
       _updateState(ValidationState.validating);
       notifyListeners();
       
-      // Get the last 10 seconds of EEG data
+      // Get the last 5 seconds of EEG data
       final samples = _eegDataProvider!.dataProcessor.getLatestJsonSamples();
       
-      // Take only the last 10 seconds worth of data (1000 samples at 100Hz)
+      // Take only the last 50 seconds worth of data (500 samples at 100Hz)
       final recentSamples = samples.length > ValidationConstants.minSamplesRequired
           ? samples.sublist(samples.length - ValidationConstants.minSamplesRequired)
           : samples;

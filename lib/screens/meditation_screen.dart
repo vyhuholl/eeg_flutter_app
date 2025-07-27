@@ -39,6 +39,10 @@ class _MeditationScreenState extends State<MeditationScreen> {
   bool _isCsvLogging = false;
   StreamSubscription<List<EEGJsonSample>>? _csvDataSubscription;
   
+  // CSV sample limit (30,000 samples = 5 minutes at 100Hz)
+  int _csvSampleCount = 0;
+  static const int _csvSampleLimit = 30000;
+  
   // Optimized CSV buffering
   final StringBuffer _csvBuffer = StringBuffer();
   int _csvBufferLineCount = 0;
@@ -47,7 +51,7 @@ class _MeditationScreenState extends State<MeditationScreen> {
   static const int _flushIntervalMs = 1000; // More frequent flushes (1 second)
   
   // Pre-allocated lists to avoid garbage collection
-  final List<String> _csvFieldsBuffer = List.filled(11, '');
+  final List<String> _csvFieldsBuffer = List.filled(12, '');
   
   // Batch processing
   final List<EEGJsonSample> _pendingSamples = [];
@@ -207,8 +211,11 @@ class _MeditationScreenState extends State<MeditationScreen> {
       _csvFile = File(csvPath);
       
       // Write header once
-      const csvHeader = 'eeg,delta,theta,alpha,beta,gamma,btr,atr,pope,gtr,rab\n';
+      const csvHeader = 'datetime,eeg,delta,theta,alpha,beta,gamma,btr,atr,pope,gtr,rab\n';
       await _csvFile!.writeAsString(csvHeader, mode: FileMode.write);
+      
+      // Reset sample counter for new CSV file
+      _csvSampleCount = 0;
       
       _isCsvLogging = true;
       _startCsvDataSubscription();
@@ -265,31 +272,53 @@ class _MeditationScreenState extends State<MeditationScreen> {
   void _writeBatchedSamplesToCsv(List<EEGJsonSample> samples) {
     if (_csvFile == null || !_isCsvLogging || samples.isEmpty) return;
     
+    // Check if we've already reached the sample limit
+    if (_csvSampleCount >= _csvSampleLimit) {
+      return;
+    }
+    
     try {
       // Use StringBuffer for efficient string building
       final batchBuffer = StringBuffer();
+      int samplesToWrite = 0;
       
       for (final sample in samples) {
+        // Stop if we would exceed the limit
+        if (_csvSampleCount + samplesToWrite >= _csvSampleLimit) {
+          break;
+        }
+        
         // Pre-populate fields array to avoid repeated string operations
-        _csvFieldsBuffer[0] = sample.eegValue.toString();
-        _csvFieldsBuffer[1] = sample.delta.toString();
-        _csvFieldsBuffer[2] = sample.theta.toString();
-        _csvFieldsBuffer[3] = sample.alpha.toString();
-        _csvFieldsBuffer[4] = sample.beta.toString();
-        _csvFieldsBuffer[5] = sample.gamma.toString();
-        _csvFieldsBuffer[6] = sample.btr.toStringAsFixed(2);
-        _csvFieldsBuffer[7] = sample.atr.toStringAsFixed(2);
-        _csvFieldsBuffer[8] = sample.pope.toStringAsFixed(2);
-        _csvFieldsBuffer[9] = sample.gtr.toStringAsFixed(2);
-        _csvFieldsBuffer[10] = sample.rab.toStringAsFixed(2);
+        _csvFieldsBuffer[0] = sample.absoluteTimestamp.toString();
+        _csvFieldsBuffer[1] = sample.eegValue.toString();
+        _csvFieldsBuffer[2] = sample.delta.toString();
+        _csvFieldsBuffer[3] = sample.theta.toString();
+        _csvFieldsBuffer[4] = sample.alpha.toString();
+        _csvFieldsBuffer[5] = sample.beta.toString();
+        _csvFieldsBuffer[6] = sample.gamma.toString();
+        _csvFieldsBuffer[7] = sample.btr.toStringAsFixed(2);
+        _csvFieldsBuffer[8] = sample.atr.toStringAsFixed(2);
+        _csvFieldsBuffer[9] = sample.pope.toStringAsFixed(2);
+        _csvFieldsBuffer[10] = sample.gtr.toStringAsFixed(2);
+        _csvFieldsBuffer[11] = sample.rab.toStringAsFixed(2);
         
         // Join fields efficiently
         batchBuffer.write(_csvFieldsBuffer.join(','));
         batchBuffer.write('\n');
+        samplesToWrite++;
       }
       
-      // Add batch to main buffer
-      _addBatchToCsvBuffer(batchBuffer.toString(), samples.length);
+      if (samplesToWrite > 0) {
+        // Add batch to main buffer and update sample count
+        _addBatchToCsvBuffer(batchBuffer.toString(), samplesToWrite);
+        _csvSampleCount += samplesToWrite;
+        
+        // Check if we've reached the limit and log/stop if needed
+        if (_csvSampleCount >= _csvSampleLimit) {
+          LoggerService.info('CSV sample limit reached: $_csvSampleLimit samples recorded. CSV logging stopped.');
+          _stopCsvLogging();
+        }
+      }
       
     } catch (e) {
       LoggerService.error('Error batching CSV data: $e');
@@ -341,6 +370,7 @@ class _MeditationScreenState extends State<MeditationScreen> {
     
     _csvBuffer.clear();
     _csvBufferLineCount = 0;
+    _csvSampleCount = 0;
     _pendingSamples.clear();
   }
 

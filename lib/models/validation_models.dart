@@ -276,7 +276,7 @@ class ValidationConstants {
   static const double maxAllowedVariance = 500.0;
   
   /// Required time window for validation in seconds
-  static const int validationWindowSeconds = 10;
+  static const int validationWindowSeconds = 5;
   
   /// Minimum number of samples required for validation (at 100Hz)
   static const int minSamplesRequired = validationWindowSeconds * 100;

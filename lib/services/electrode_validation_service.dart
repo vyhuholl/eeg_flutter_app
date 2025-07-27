@@ -5,7 +5,7 @@ import '../models/validation_models.dart';
 class ElectrodeValidationService {
   /// Validate electrode connection quality using EEG data samples
   /// 
-  /// Analyzes the last 10 seconds of EEG data to check:
+  /// Analyzes the last 5 seconds of EEG data to check:
   /// - All eegValue readings are between 500-2000
   /// - Variance of eegValue is less than 500
   /// 
@@ -124,7 +124,7 @@ class ElectrodeValidationService {
   /// Check if sufficient data is available for validation
   /// 
   /// [samples] - Available EEG samples
-  /// Returns true if enough data is available for 10-second validation
+  /// Returns true if enough data is available for 5-second validation
   bool hasSufficientData(List<EEGJsonSample> samples) {
     return samples.length >= ValidationConstants.minSamplesRequired;
   }
