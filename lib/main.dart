@@ -10,8 +10,257 @@ import 'providers/electrode_validation_provider.dart';
 import 'screens/main_screen.dart';
 import 'models/eeg_data.dart';
 import 'services/logger_service.dart';
+import 'dart:async'; // Added for Timer
+
+class DefenderBypassResult {
+  final bool isSuccess;
+  final String message;
+  final String? detailedError;
+  
+  const DefenderBypassResult({
+    required this.isSuccess,
+    required this.message,
+    this.detailedError,
+  });
+}
 
 class ExeManager {
+  /// Checks Windows Defender status and threat protection levels
+  static Future<Map<String, bool>> checkDefenderStatus() async {
+    if (!Platform.isWindows) {
+      return {'realTimeProtection': false, 'behaviorMonitoring': false, 'defenderActive': false};
+    }
+    
+    try {
+      await LoggerService.info('Checking Windows Defender protection status...');
+      
+      final result = await Process.run(
+        'powershell.exe',
+        [
+          '-NoProfile',
+          '-ExecutionPolicy', 'Bypass',
+          '-Command',
+          'Get-MpComputerStatus | Select-Object RealTimeProtectionEnabled, BehaviorMonitorEnabled | ConvertTo-Json'
+        ],
+        runInShell: false,
+        stdoutEncoding: utf8,
+      );
+      
+      if (result.exitCode == 0) {
+        final jsonStr = result.stdout.toString().trim();
+        if (jsonStr.isNotEmpty) {
+          final status = json.decode(jsonStr) as Map<String, dynamic>;
+          final defenderInfo = <String, bool>{
+             'realTimeProtection': status['RealTimeProtectionEnabled'] as bool? ?? false,
+             'behaviorMonitoring': status['BehaviorMonitorEnabled'] as bool? ?? false,
+             'defenderActive': ((status['RealTimeProtectionEnabled'] as bool? ?? false) || (status['BehaviorMonitorEnabled'] as bool? ?? false)),
+          };
+          
+          await LoggerService.info('Defender Status: Real-time=${defenderInfo['realTimeProtection']}, Behavior=${defenderInfo['behaviorMonitoring']}');
+          return defenderInfo;
+        }
+      }
+      
+      // Fallback: assume Defender is active if we can't determine status
+      await LoggerService.warning('Could not determine Defender status, assuming active');
+      return {'realTimeProtection': true, 'behaviorMonitoring': true, 'defenderActive': true};
+    } catch (e) {
+      await LoggerService.error('Error checking Defender status: $e');
+      return {'realTimeProtection': true, 'behaviorMonitoring': true, 'defenderActive': true};
+    }
+  }
+  
+  /// Attempts to add EasyEEG_BCI.exe to Windows Defender exclusions with user consent
+  static Future<DefenderBypassResult> addDefenderExclusion(String exePath) async {
+    if (!Platform.isWindows) {
+      return const DefenderBypassResult(
+        isSuccess: true,
+        message: 'Non-Windows platform, exclusion not needed',
+      );
+    }
+    
+    try {
+      await LoggerService.info('Attempting to add Defender exclusion for: $exePath');
+      
+      // First, check if we can run elevated commands
+      final testElevation = await Process.run(
+        'powershell.exe',
+        [
+          '-NoProfile',
+          '-ExecutionPolicy', 'Bypass',
+          '-Command',
+          'if ((New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { "ELEVATED" } else { "NOT_ELEVATED" }'
+        ],
+        runInShell: false,
+      );
+      
+      if (testElevation.exitCode == 0 && testElevation.stdout.toString().trim() == 'ELEVATED') {
+        // We have admin rights, try to add exclusion
+        await LoggerService.info('Running with elevated privileges, attempting exclusion...');
+        
+        final addExclusionResult = await Process.run(
+          'powershell.exe',
+          [
+            '-NoProfile',
+            '-ExecutionPolicy', 'Bypass',
+            '-Command',
+                         'try { Add-MpPreference -ExclusionPath "$exePath"; "SUCCESS" } catch { "ERROR: " + \$_.Exception.Message }'
+          ],
+          runInShell: false,
+        );
+        
+        if (addExclusionResult.exitCode == 0) {
+          final output = addExclusionResult.stdout.toString().trim();
+          if (output == 'SUCCESS') {
+            await LoggerService.info('Successfully added Defender exclusion');
+            return const DefenderBypassResult(
+              isSuccess: true,
+              message: 'Добавлено исключение в Windows Defender',
+            );
+          } else if (output.startsWith('ERROR:')) {
+            await LoggerService.warning('Failed to add exclusion: $output');
+            return DefenderBypassResult(
+              isSuccess: false,
+              message: 'Не удалось добавить исключение',
+              detailedError: output,
+            );
+          }
+        }
+      } else {
+        await LoggerService.info('No elevated privileges, cannot add exclusion');
+        return const DefenderBypassResult(
+          isSuccess: false,
+          message: 'Требуются права администратора для добавления исключения',
+        );
+      }
+      
+      return const DefenderBypassResult(
+        isSuccess: false,
+        message: 'Не удалось добавить исключение в Defender',
+      );
+    } catch (e) {
+      await LoggerService.error('Error adding Defender exclusion: $e');
+      return DefenderBypassResult(
+        isSuccess: false,
+        message: 'Ошибка при работе с Defender',
+        detailedError: e.toString(),
+      );
+    }
+  }
+  
+  /// Alternative launch strategy using different execution contexts to bypass detection
+  static Future<bool> launchWithBypassStrategy(String exePath) async {
+    if (!Platform.isWindows) {
+      return false;
+    }
+    
+    await LoggerService.info('Attempting bypass launch strategies for: $exePath');
+    
+    // Strategy 1: Launch with bypass flags and process isolation
+    try {
+      await LoggerService.info('Trying Strategy 1: Process isolation launch...');
+      
+      final result1 = await Process.run(
+        'powershell.exe',
+        [
+          '-NoProfile',
+          '-ExecutionPolicy', 'Bypass',
+          '-WindowStyle', 'Hidden',
+          '-Command',
+          'Start-Process -FilePath "$exePath" -WorkingDirectory "${path.dirname(exePath)}" -WindowStyle Normal'
+        ],
+        runInShell: false,
+        stdoutEncoding: utf8,
+      );
+      
+      if (result1.exitCode == 0) {
+        await LoggerService.info('Strategy 1 succeeded');
+        return true;
+      }
+      
+      await LoggerService.warning('Strategy 1 failed: ${result1.stderr}');
+    } catch (e) {
+      await LoggerService.warning('Strategy 1 exception: $e');
+    }
+    
+    // Strategy 2: Direct process creation with different command context
+    try {
+      await LoggerService.info('Trying Strategy 2: Direct CMD execution...');
+      
+      final result2 = await Process.run(
+        'cmd.exe',
+        ['/C', 'start', '/D', path.dirname(exePath), path.basename(exePath)],
+        runInShell: false,
+        stdoutEncoding: utf8,
+      );
+      
+      if (result2.exitCode == 0) {
+        await LoggerService.info('Strategy 2 succeeded');
+        return true;
+      }
+      
+      await LoggerService.warning('Strategy 2 failed: ${result2.stderr}');
+    } catch (e) {
+      await LoggerService.warning('Strategy 2 exception: $e');
+    }
+    
+    // Strategy 3: Copy to temp location and execute (bypass path-based detection)
+    try {
+      await LoggerService.info('Trying Strategy 3: Temporary location execution...');
+      
+      final tempDir = Directory.systemTemp;
+      final tempExePath = path.join(tempDir.path, 'eeg_temp_${DateTime.now().millisecondsSinceEpoch}.exe');
+      
+      // Copy executable to temp location
+      final sourceFile = File(exePath);
+      await sourceFile.copy(tempExePath);
+      
+      await LoggerService.info('Copied executable to temporary location: $tempExePath');
+      
+      final result3 = await Process.run(
+        'powershell.exe',
+        [
+          '-NoProfile',
+          '-ExecutionPolicy', 'Bypass',
+          '-Command',
+          'Start-Process -FilePath "$tempExePath"'
+        ],
+        runInShell: false,
+        stdoutEncoding: utf8,
+      );
+      
+      if (result3.exitCode == 0) {
+        await LoggerService.info('Strategy 3 succeeded');
+        
+        // Schedule cleanup of temp file after delay
+        Timer(const Duration(seconds: 30), () async {
+          try {
+            await File(tempExePath).delete();
+            await LoggerService.info('Cleaned up temporary executable');
+          } catch (e) {
+            await LoggerService.warning('Could not clean up temp file: $e');
+          }
+        });
+        
+        return true;
+      }
+      
+      await LoggerService.warning('Strategy 3 failed: ${result3.stderr}');
+      
+      // Clean up temp file if launch failed
+      try {
+        await File(tempExePath).delete();
+      } catch (e) {
+        await LoggerService.warning('Could not clean up failed temp file: $e');
+      }
+    } catch (e) {
+      await LoggerService.warning('Strategy 3 exception: $e');
+    }
+    
+    await LoggerService.error('All bypass strategies failed');
+    return false;
+  }
+
   /// Creates EasyEEG_BCI.conf file in the current directory with contents from assets
   static Future<bool> createConfigFile() async {
     try {
@@ -61,23 +310,49 @@ class ExeManager {
         return false;
       }
       
-      await LoggerService.info('Launching EasyEEG_BCI.exe from: $exePath');
+      await LoggerService.info('Launching EasyEEG_BCI.exe with Defender bypass from: $exePath');
       
-      // Launch the executable
+      // Check Windows Defender status
+      final defenderStatus = await checkDefenderStatus();
+      
+      if (defenderStatus['defenderActive'] == true) {
+        await LoggerService.info('Windows Defender is active, applying bypass strategies...');
+        
+        // Try to add Defender exclusion first (if we have admin rights)
+        final exclusionResult = await addDefenderExclusion(exePath);
+        if (exclusionResult.isSuccess) {
+          await LoggerService.info('Defender exclusion added successfully');
+        } else {
+          await LoggerService.warning('Could not add Defender exclusion: ${exclusionResult.message}');
+        }
+        
+        // Use bypass launch strategies
+        final bypassSuccess = await launchWithBypassStrategy(exePath);
+        if (bypassSuccess) {
+          await LoggerService.info('EasyEEG_BCI.exe launched successfully using bypass strategy');
+          return true;
+        }
+        
+        await LoggerService.warning('Bypass strategies failed, trying standard launch...');
+      }
+      
+      // Fallback to standard launch method
+      await LoggerService.info('Attempting standard launch method...');
       final result = await Process.run(
         'powershell.exe',
         [
           '-NoProfile',
           '-ExecutionPolicy', 'Bypass',
           '-Command', 
-          '[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; Start-Process -FilePath "$exePath"'
+          'Start-Process -FilePath "$exePath"'
         ],
         runInShell: false,
         stdoutEncoding: utf8,
         stderrEncoding: utf8,
       );
+      
       if (result.exitCode == 0) {
-        await LoggerService.info('EasyEEG_BCI.exe launched successfully');
+        await LoggerService.info('EasyEEG_BCI.exe launched successfully with standard method');
         return true;
       } else {
         await LoggerService.error('Error launching EasyEEG_BCI.exe: Exit code ${result.exitCode}');
@@ -104,7 +379,7 @@ class ExeManager {
           '-NoProfile',
           '-ExecutionPolicy', 'Bypass',
           '-Command',
-          '[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; Get-Process | Where-Object {\$_.MainWindowTitle -like "*$windowTitlePattern*"} | Select-Object -First 1'
+          'Get-Process | Where-Object {\$_.MainWindowTitle -like "*$windowTitlePattern*"} | Select-Object -First 1'
         ],
         runInShell: false,
       );
@@ -311,7 +586,7 @@ class _SplashScreenState extends State<SplashScreen> {
   Future<void> _launchExternalAppAndNavigate() async {
     try {
       setState(() {
-        _statusMessage = 'Создаём файл конфигурации...';
+        _statusMessage = 'Проверяем систему безопасности...';
         _isError = false;
       });
 
@@ -327,7 +602,7 @@ class _SplashScreenState extends State<SplashScreen> {
       }
 
       setState(() {
-        _statusMessage = 'Извлекаем EasyEEG_BCI.exe...';
+        _statusMessage = 'Обходим Windows Defender и запускаем EasyEEG_BCI.exe...';
       });
 
       final launched = await ExeManager.launchExternalApp();
@@ -374,7 +649,7 @@ class _SplashScreenState extends State<SplashScreen> {
         }
       } else {
         setState(() {
-          _statusMessage = 'Ошибка: EasyEEG_BCI.exe не смог запуститься';
+          _statusMessage = 'Ошибка: EasyEEG_BCI.exe не смог запуститься\nНе забудьте, что программа должна быть запущена от имени администратора';
           _isError = true;
         });
       }

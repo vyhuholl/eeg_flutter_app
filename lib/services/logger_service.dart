@@ -40,6 +40,9 @@ class LoggerService {
     final String logFilePath = path.join(appDir.path, 'logs.log');
     _logFile = File(logFilePath);
     
+    // Overwrite the log file to start fresh on every app launch
+    await _logFile!.writeAsString('');
+    
     // Create the logger with file output
     _logger = Logger(
       printer: PrettyPrinter(
