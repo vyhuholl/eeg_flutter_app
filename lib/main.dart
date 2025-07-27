@@ -12,6 +12,40 @@ import 'models/eeg_data.dart';
 import 'services/logger_service.dart';
 import 'dart:async'; // Added for Timer
 
+class AdminPrivilegeChecker {
+  /// Checks if the application is running with administrator privileges on Windows
+  static Future<bool> isRunningAsAdministrator() async {
+    if (!Platform.isWindows) {
+      // On non-Windows platforms, assume no administrator check is needed
+      return true;
+    }
+    
+    try {
+      final result = await Process.run(
+        'powershell.exe',
+        [
+          '-NoProfile',
+          '-ExecutionPolicy', 'Bypass',
+          '-Command',
+          'if ((New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { "ELEVATED" } else { "NOT_ELEVATED" }'
+        ],
+        runInShell: false,
+      );
+      
+      if (result.exitCode == 0) {
+        final output = result.stdout.toString().trim();
+        return output == 'ELEVATED';
+      }
+      
+      return false;
+    } catch (e) {
+      await LoggerService.error('Error checking administrator privileges: $e');
+      // If we can't determine, assume not administrator for security
+      return false;
+    }
+  }
+}
+
 class DefenderBypassResult {
   final bool isSuccess;
   final String message;
@@ -81,63 +115,38 @@ class ExeManager {
     
     try {
       await LoggerService.info('Attempting to add Defender exclusion for: $exePath');
-      
-      // First, check if we can run elevated commands
-      final testElevation = await Process.run(
+      final addExclusionResult = await Process.run(
         'powershell.exe',
         [
           '-NoProfile',
           '-ExecutionPolicy', 'Bypass',
           '-Command',
-          'if ((New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { "ELEVATED" } else { "NOT_ELEVATED" }'
+                       'try { Add-MpPreference -ExclusionPath "$exePath"; "SUCCESS" } catch { "ERROR: " + \$_.Exception.Message }'
         ],
         runInShell: false,
       );
-      
-      if (testElevation.exitCode == 0 && testElevation.stdout.toString().trim() == 'ELEVATED') {
-        // We have admin rights, try to add exclusion
-        await LoggerService.info('Running with elevated privileges, attempting exclusion...');
         
-        final addExclusionResult = await Process.run(
-          'powershell.exe',
-          [
-            '-NoProfile',
-            '-ExecutionPolicy', 'Bypass',
-            '-Command',
-                         'try { Add-MpPreference -ExclusionPath "$exePath"; "SUCCESS" } catch { "ERROR: " + \$_.Exception.Message }'
-          ],
-          runInShell: false,
-        );
-        
-        if (addExclusionResult.exitCode == 0) {
-          final output = addExclusionResult.stdout.toString().trim();
-          if (output == 'SUCCESS') {
-            await LoggerService.info('Successfully added Defender exclusion');
-            return const DefenderBypassResult(
-              isSuccess: true,
-              message: 'Добавлено исключение в Windows Defender',
-            );
-          } else if (output.startsWith('ERROR:')) {
-            await LoggerService.warning('Failed to add exclusion: $output');
-            return DefenderBypassResult(
-              isSuccess: false,
-              message: 'Не удалось добавить исключение',
-              detailedError: output,
-            );
-          }
+      if (addExclusionResult.exitCode == 0) {
+        final output = addExclusionResult.stdout.toString().trim();
+        if (output == 'SUCCESS') {
+          await LoggerService.info('Successfully added Defender exclusion');
+          return const DefenderBypassResult(
+            isSuccess: true,
+            message: 'Добавлено исключение в Windows Defender',
+          );
+        } else if (output.startsWith('ERROR:')) {
+          await LoggerService.warning('Failed to add exclusion: $output');
+          return DefenderBypassResult(
+            isSuccess: false,
+            message: 'Не удалось добавить исключение',
+            detailedError: output,
+          );
         }
-      } else {
-        await LoggerService.info('No elevated privileges, cannot add exclusion');
-        return const DefenderBypassResult(
-          isSuccess: false,
-          message: 'Требуются права администратора для добавления исключения',
-        );
       }
-      
-      return const DefenderBypassResult(
-        isSuccess: false,
-        message: 'Не удалось добавить исключение в Defender',
-      );
+    return const DefenderBypassResult(
+      isSuccess: false,
+      message: 'Не удалось добавить исключение в Defender',
+    );
     } catch (e) {
       await LoggerService.error('Error adding Defender exclusion: $e');
       return DefenderBypassResult(
@@ -406,7 +415,7 @@ void main() async {
   // Initialize logger early
   await LoggerService.instance;
 
-  // Start the Flutter application with setup instructions screen
+  // Start the Flutter application with administrator check first
   runApp(const EEGApp());
 }
 
@@ -461,8 +470,116 @@ class EEGApp extends StatelessWidget {
           visualDensity: VisualDensity.adaptivePlatformDensity,
           useMaterial3: true,
         ),
-        home: const SetupInstructionsScreen(), // Start with setup instructions screen
+        home: const AdministratorCheckScreen(), // Start with administrator check first
         debugShowCheckedModeBanner: false,
+      ),
+    );
+  }
+}
+
+class AdministratorCheckScreen extends StatefulWidget {
+  const AdministratorCheckScreen({super.key});
+
+  @override
+  State<AdministratorCheckScreen> createState() => _AdministratorCheckScreenState();
+}
+
+class _AdministratorCheckScreenState extends State<AdministratorCheckScreen> {
+  bool _isChecking = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkAdministratorPrivileges();
+  }
+
+  Future<void> _checkAdministratorPrivileges() async {
+    try {
+      final isAdministrator = await AdminPrivilegeChecker.isRunningAsAdministrator();
+      
+      if (mounted) {
+        setState(() {
+          _isChecking = false;
+        });
+        
+        if (isAdministrator) {
+          // Administrator privileges confirmed, proceed to setup instructions
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (context) => const SetupInstructionsScreen(),
+            ),
+          );
+        }
+        // If not administrator, stay on this screen to show the error message
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isChecking = false;
+        });
+      }
+      await LoggerService.error('Error during administrator check: $e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isChecking) {
+      // Show loading screen while checking
+      return Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: const [
+              CircularProgressIndicator(
+                color: Colors.blue,
+              ),
+              SizedBox(height: 20),
+              Text(
+                'Проверка прав доступа...',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Show administrator required message
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Error icon
+              const Icon(
+                Icons.security,
+                size: 80,
+                color: Colors.red,
+              ),
+              const SizedBox(height: 30),
+              
+              // Error message
+              const Text(
+                'Программа должна быть запущена от имени администратора.\nЗакройте окно и перезапустите программу в нужном режиме.\n(правая кнопка мыши -> Запуск от имени администратора)',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w500,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 40),
+            ],
+          ),
+        ),
       ),
     );
   }
