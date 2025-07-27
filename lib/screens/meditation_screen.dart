@@ -1,15 +1,16 @@
 import 'dart:async';
-// import 'dart:io';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-// import 'package:path_provider/path_provider.dart';
-// import 'package:path/path.dart' as path;
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as path;
+import 'package:archive/archive.dart';
 import '../widgets/eeg_chart.dart';
 import '../providers/eeg_data_provider.dart';
 import '../models/eeg_data.dart';
 import 'meditation_selection_screen.dart';
-// import '../services/logger_service.dart';
+import '../services/logger_service.dart';
 
 /// Meditation screen with timer and visual elements
 class MeditationScreen extends StatefulWidget {
@@ -34,24 +35,24 @@ class _MeditationScreenState extends State<MeditationScreen> {
   double _currentCircleSize = 250.0;
   bool _isBaselineRecorded = false;
   
-  // // CSV logging
-  // File? _csvFile;
-  // bool _isCsvLogging = false;
-  // StreamSubscription<List<EEGJsonSample>>? _csvDataSubscription;
+  // CSV logging
+  File? _csvFile;
+  bool _isCsvLogging = false;
+  StreamSubscription<List<EEGJsonSample>>? _csvDataSubscription;
   
-  // // Optimized CSV buffering
-  // final StringBuffer _csvBuffer = StringBuffer();
-  // int _csvBufferLineCount = 0;
-  // Timer? _csvFlushTimer;
-  // static const int _maxBufferLines = 500; // Reduced for more frequent flushes
-  // static const int _flushIntervalMs = 1000; // More frequent flushes (1 second)
+  // Optimized CSV buffering
+  final StringBuffer _csvBuffer = StringBuffer();
+  int _csvBufferLineCount = 0;
+  Timer? _csvFlushTimer;
+  static const int _maxBufferLines = 500; // Reduced for more frequent flushes
+  static const int _flushIntervalMs = 1000; // More frequent flushes (1 second)
   
-  // // Pre-allocated lists to avoid garbage collection
-  // final List<String> _csvFieldsBuffer = List.filled(22, '');
+  // Pre-allocated lists to avoid garbage collection
+  final List<String> _csvFieldsBuffer = List.filled(22, '');
   
-  // // Batch processing
-  // final List<EEGJsonSample> _pendingSamples = [];
-  // static const int _batchSize = 50; // Process samples in batches
+  // Batch processing
+  final List<EEGJsonSample> _pendingSamples = [];
+  static const int _batchSize = 50; // Process samples in batches
   
   // Sliding window state for O(n) value calculation
   final List<EEGJsonSample> _valueWindow = [];
@@ -64,14 +65,14 @@ class _MeditationScreenState extends State<MeditationScreen> {
     super.initState();
     _startTimer();
     _startAnimationTimer();
-    // _initializeCsvLogging();
+    _initializeCsvLogging();
   }
 
   @override
   void dispose() {
     _timer.cancel();
     _animationTimer.cancel();
-    // _stopCsvLogging();
+    _stopCsvLogging();
     
     // Clean up sliding window state
     _valueWindow.clear();
@@ -89,8 +90,8 @@ class _MeditationScreenState extends State<MeditationScreen> {
         if (_seconds >= 300) {
           _timer.cancel();
           // Ensure final buffer flush before stopping CSV logging
-          // _flushCsvBuffer();
-          // _stopCsvLogging();
+          _flushCsvBuffer();
+          _stopCsvLogging();
         }
       });
     });
@@ -105,8 +106,8 @@ class _MeditationScreenState extends State<MeditationScreen> {
 
   void _endMeditation() {
     // Ensure final buffer flush before stopping CSV logging
-    // _flushCsvBuffer();
-    // _stopCsvLogging();
+    _flushCsvBuffer();
+    _stopCsvLogging();
     // Navigate back to start screen
     Navigator.of(context).popUntil((route) => route.isFirst);
   }
@@ -194,168 +195,246 @@ class _MeditationScreenState extends State<MeditationScreen> {
     return newSize.clamp(minSize, maxSize);
   }
 
-  // // CSV Logging Methods
-  // Future<void> _initializeCsvLogging() async {
-  //   try {
-  //     final directory = await getApplicationDocumentsDirectory();
-  //     final eegSamplesDir = Directory(path.join(directory.path, 'eeg_samples'));
-  //     await eegSamplesDir.create(recursive: true);
+  // CSV Logging Methods
+  Future<void> _initializeCsvLogging() async {
+    try {
+      final directory = await getApplicationDocumentsDirectory();
+      final eegSamplesDir = Directory(path.join(directory.path, 'eeg_samples'));
+      await eegSamplesDir.create(recursive: true);
       
-  //     final timestamp = _formatDateTimeForFilename(DateTime.now());
-  //     final csvPath = path.join(eegSamplesDir.path, '${timestamp}_EEG_samples.csv');
+      final timestamp = _formatDateTimeForFilename(DateTime.now());
+      final csvPath = path.join(eegSamplesDir.path, '${timestamp}_EEG_samples.csv');
       
-  //     _csvFile = File(csvPath);
+      _csvFile = File(csvPath);
       
-  //     // Write header once
-  //     const csvHeader = 'timeDelta,eegValue,absoluteTimestamp,sequenceNumber,d1,t1,t2,a1,a2,b1,b2,b3,g1,theta,alpha,beta,gamma,btr,atr,pope,gtr,rab\n';
-  //     await _csvFile!.writeAsString(csvHeader, mode: FileMode.write);
+      // Write header once
+      const csvHeader = 'timeDelta,eegValue,absoluteTimestamp,sequenceNumber,d1,t1,t2,a1,a2,b1,b2,b3,g1,theta,alpha,beta,gamma,btr,atr,pope,gtr,rab\n';
+      await _csvFile!.writeAsString(csvHeader, mode: FileMode.write);
       
-  //     _isCsvLogging = true;
-  //     _startCsvDataSubscription();
-  //     _startCsvFlushTimer();
-  //   } catch (e) {
-  //     await LoggerService.error('Error initializing CSV logging: $e');
-  //   }
-  // }
+      _isCsvLogging = true;
+      _startCsvDataSubscription();
+      _startCsvFlushTimer();
+    } catch (e) {
+      await LoggerService.error('Error initializing CSV logging: $e');
+    }
+  }
 
-  // /// Format DateTime for use in filenames (avoiding invalid characters)
-  // String _formatDateTimeForFilename(DateTime dateTime) {
-  //   return '${dateTime.year.toString().padLeft(4, '0')}-'
-  //          '${dateTime.month.toString().padLeft(2, '0')}-'
-  //          '${dateTime.day.toString().padLeft(2, '0')}_'
-  //          '${dateTime.hour.toString().padLeft(2, '0')}-'
-  //          '${dateTime.minute.toString().padLeft(2, '0')}-'
-  //          '${dateTime.second.toString().padLeft(2, '0')}';
-  // }
+  /// Format DateTime for use in filenames (avoiding invalid characters)
+  String _formatDateTimeForFilename(DateTime dateTime) {
+    return '${dateTime.year.toString().padLeft(4, '0')}-'
+           '${dateTime.month.toString().padLeft(2, '0')}-'
+           '${dateTime.day.toString().padLeft(2, '0')}_'
+           '${dateTime.hour.toString().padLeft(2, '0')}-'
+           '${dateTime.minute.toString().padLeft(2, '0')}-'
+           '${dateTime.second.toString().padLeft(2, '0')}';
+  }
 
-  // void _startCsvDataSubscription() {
-  //   final eegProvider = Provider.of<EEGDataProvider>(context, listen: false);
-  //   _csvDataSubscription = eegProvider.dataProcessor.processedJsonDataStream.listen(
-  //     (samples) {
-  //       if (_isCsvLogging && samples.isNotEmpty) {
-  //         // Add to pending samples for batch processing
-  //         _pendingSamples.addAll(samples);
+  void _startCsvDataSubscription() {
+    final eegProvider = Provider.of<EEGDataProvider>(context, listen: false);
+    _csvDataSubscription = eegProvider.dataProcessor.processedJsonDataStream.listen(
+      (samples) {
+        if (_isCsvLogging && samples.isNotEmpty) {
+          // Add to pending samples for batch processing
+          _pendingSamples.addAll(samples);
           
-  //         // Process in batches to reduce overhead
-  //         if (_pendingSamples.length >= _batchSize) {
-  //           _processBatchedSamples();
-  //         }
-  //       }
-  //     },
-  //   );
-  // }
+          // Process in batches to reduce overhead
+          if (_pendingSamples.length >= _batchSize) {
+            _processBatchedSamples();
+          }
+        }
+      },
+    );
+  }
 
-  // void _processBatchedSamples() {
-  //   if (_pendingSamples.isEmpty) return;
+  void _processBatchedSamples() {
+    if (_pendingSamples.isEmpty) return;
     
-  //   _writeBatchedSamplesToCsv(_pendingSamples);
-  //   _pendingSamples.clear();
-  // }
+    _writeBatchedSamplesToCsv(_pendingSamples);
+    _pendingSamples.clear();
+  }
 
-  // void _startCsvFlushTimer() {
-  //   _csvFlushTimer = Timer.periodic(const Duration(milliseconds: _flushIntervalMs), (timer) {
-  //     // Process any remaining samples
-  //     if (_pendingSamples.isNotEmpty) {
-  //       _processBatchedSamples();
-  //     }
-  //     _flushCsvBuffer();
-  //   });
-  // }
+  void _startCsvFlushTimer() {
+    _csvFlushTimer = Timer.periodic(const Duration(milliseconds: _flushIntervalMs), (timer) {
+      // Process any remaining samples
+      if (_pendingSamples.isNotEmpty) {
+        _processBatchedSamples();
+      }
+      _flushCsvBuffer();
+    });
+  }
 
-  // void _writeBatchedSamplesToCsv(List<EEGJsonSample> samples) {
-  //   if (_csvFile == null || !_isCsvLogging || samples.isEmpty) return;
+  void _writeBatchedSamplesToCsv(List<EEGJsonSample> samples) {
+    if (_csvFile == null || !_isCsvLogging || samples.isEmpty) return;
     
-  //   try {
-  //     // Use StringBuffer for efficient string building
-  //     final batchBuffer = StringBuffer();
+    try {
+      // Use StringBuffer for efficient string building
+      final batchBuffer = StringBuffer();
       
-  //     for (final sample in samples) {
-  //       // Use milliseconds since epoch instead of ISO string for better performance
-  //       final timestampMs = sample.absoluteTimestamp.millisecondsSinceEpoch;
+      for (final sample in samples) {
+        // Use milliseconds since epoch instead of ISO string for better performance
+        final timestampMs = sample.absoluteTimestamp.millisecondsSinceEpoch;
         
-  //       // Pre-populate fields array to avoid repeated string operations
-  //       _csvFieldsBuffer[0] = sample.timeDelta.toString();
-  //       _csvFieldsBuffer[1] = sample.eegValue.toString();
-  //       _csvFieldsBuffer[2] = timestampMs.toString();
-  //       _csvFieldsBuffer[3] = sample.sequenceNumber.toString();
-  //       _csvFieldsBuffer[4] = sample.d1.toString();
-  //       _csvFieldsBuffer[5] = sample.t1.toString();
-  //       _csvFieldsBuffer[6] = sample.t2.toString();
-  //       _csvFieldsBuffer[7] = sample.a1.toString();
-  //       _csvFieldsBuffer[8] = sample.a2.toString();
-  //       _csvFieldsBuffer[9] = sample.b1.toString();
-  //       _csvFieldsBuffer[10] = sample.b2.toString();
-  //       _csvFieldsBuffer[11] = sample.b3.toString();
-  //       _csvFieldsBuffer[12] = sample.g1.toString();
-  //       _csvFieldsBuffer[13] = sample.theta.toString();
-  //       _csvFieldsBuffer[14] = sample.alpha.toString();
-  //       _csvFieldsBuffer[15] = sample.beta.toString();
-  //       _csvFieldsBuffer[16] = sample.gamma.toString();
-  //       _csvFieldsBuffer[17] = sample.btr.toString();
-  //       _csvFieldsBuffer[18] = sample.atr.toString();
-  //       _csvFieldsBuffer[19] = sample.pope.toString();
-  //       _csvFieldsBuffer[20] = sample.gtr.toString();
-  //       _csvFieldsBuffer[21] = sample.rab.toString();
+        // Pre-populate fields array to avoid repeated string operations
+        _csvFieldsBuffer[0] = sample.timeDelta.toString();
+        _csvFieldsBuffer[1] = sample.eegValue.toString();
+        _csvFieldsBuffer[2] = timestampMs.toString();
+        _csvFieldsBuffer[3] = sample.sequenceNumber.toString();
+        _csvFieldsBuffer[4] = sample.d1.toString();
+        _csvFieldsBuffer[5] = sample.t1.toString();
+        _csvFieldsBuffer[6] = sample.t2.toString();
+        _csvFieldsBuffer[7] = sample.a1.toString();
+        _csvFieldsBuffer[8] = sample.a2.toString();
+        _csvFieldsBuffer[9] = sample.b1.toString();
+        _csvFieldsBuffer[10] = sample.b2.toString();
+        _csvFieldsBuffer[11] = sample.b3.toString();
+        _csvFieldsBuffer[12] = sample.g1.toString();
+        _csvFieldsBuffer[13] = sample.theta.toString();
+        _csvFieldsBuffer[14] = sample.alpha.toString();
+        _csvFieldsBuffer[15] = sample.beta.toString();
+        _csvFieldsBuffer[16] = sample.gamma.toString();
+        _csvFieldsBuffer[17] = sample.btr.toString();
+        _csvFieldsBuffer[18] = sample.atr.toString();
+        _csvFieldsBuffer[19] = sample.pope.toString();
+        _csvFieldsBuffer[20] = sample.gtr.toString();
+        _csvFieldsBuffer[21] = sample.rab.toString();
         
-  //       // Join fields efficiently
-  //       batchBuffer.write(_csvFieldsBuffer.join(','));
-  //       batchBuffer.write('\n');
-  //     }
+        // Join fields efficiently
+        batchBuffer.write(_csvFieldsBuffer.join(','));
+        batchBuffer.write('\n');
+      }
       
-  //     // Add batch to main buffer
-  //     _addBatchToCsvBuffer(batchBuffer.toString(), samples.length);
+      // Add batch to main buffer
+      _addBatchToCsvBuffer(batchBuffer.toString(), samples.length);
       
-  //   } catch (e) {
-  //     LoggerService.error('Error batching CSV data: $e');
-  //   }
-  // }
+    } catch (e) {
+      LoggerService.error('Error batching CSV data: $e');
+    }
+  }
 
-  // void _addBatchToCsvBuffer(String batchData, int lineCount) {
-  //   _csvBuffer.write(batchData);
-  //   _csvBufferLineCount += lineCount;
+  void _addBatchToCsvBuffer(String batchData, int lineCount) {
+    _csvBuffer.write(batchData);
+    _csvBufferLineCount += lineCount;
     
-  //   // Check buffer size less frequently
-  //   if (_csvBufferLineCount >= _maxBufferLines) {
-  //     _flushCsvBuffer();
-  //   }
-  // }
+    // Check buffer size less frequently
+    if (_csvBufferLineCount >= _maxBufferLines) {
+      _flushCsvBuffer();
+    }
+  }
 
-  // Future<void> _flushCsvBuffer() async {
-  //   if (_csvBufferLineCount == 0 || _csvFile == null || !_isCsvLogging) return;
+  Future<void> _flushCsvBuffer() async {
+    if (_csvBufferLineCount == 0 || _csvFile == null || !_isCsvLogging) return;
     
-  //   try {
-  //     // Write entire buffer at once
-  //     await _csvFile!.writeAsString(_csvBuffer.toString(), mode: FileMode.append);
+    try {
+      // Write entire buffer at once
+      await _csvFile!.writeAsString(_csvBuffer.toString(), mode: FileMode.append);
       
-  //     // Clear buffer efficiently
-  //     _csvBuffer.clear();
-  //     _csvBufferLineCount = 0;
-  //   } catch (e) {
-  //     LoggerService.error('Error flushing CSV buffer: $e');
-  //   }
-  // }
+      // Clear buffer efficiently
+      _csvBuffer.clear();
+      _csvBufferLineCount = 0;
+    } catch (e) {
+      LoggerService.error('Error flushing CSV buffer: $e');
+    }
+  }
 
-  // void _stopCsvLogging() {
-  //   _isCsvLogging = false;
-  //   _csvDataSubscription?.cancel();
-  //   _csvDataSubscription = null;
+  void _stopCsvLogging() {
+    _isCsvLogging = false;
+    _csvDataSubscription?.cancel();
+    _csvDataSubscription = null;
     
-  //   // Process any remaining samples
-  //   if (_pendingSamples.isNotEmpty) {
-  //     _processBatchedSamples();
-  //   }
+    // Process any remaining samples
+    if (_pendingSamples.isNotEmpty) {
+      _processBatchedSamples();
+    }
     
-  //   // Flush any remaining buffer data
-  //   _flushCsvBuffer();
+    // Flush any remaining buffer data
+    _flushCsvBuffer();
     
-  //   // Cancel timer and cleanup
-  //   _csvFlushTimer?.cancel();
-  //   _csvFlushTimer = null;
+    // Compress and replace the CSV file
+    if (_csvFile != null) {
+      _compressAndReplaceFile(_csvFile!);
+    }
     
-  //   _csvBuffer.clear();
-  //   _csvBufferLineCount = 0;
-  //   _pendingSamples.clear();
-  // }
+    // Cancel timer and cleanup
+    _csvFlushTimer?.cancel();
+    _csvFlushTimer = null;
+    
+    _csvBuffer.clear();
+    _csvBufferLineCount = 0;
+    _pendingSamples.clear();
+  }
+
+  /// Compresses the CSV file using GZIP and replaces the original with compressed version
+  Future<void> _compressAndReplaceFile(File originalFile) async {
+    try {
+      // Check if file exists
+      if (!await originalFile.exists()) {
+        await LoggerService.info('CSV file does not exist, skipping compression: ${originalFile.path}');
+        return;
+      }
+      
+      await LoggerService.info('Starting compression of CSV file: ${originalFile.path}');
+      
+      // Read original file as bytes
+      final originalBytes = await originalFile.readAsBytes();
+      final originalSize = originalBytes.length;
+      
+      if (originalSize == 0) {
+        await LoggerService.info('CSV file is empty, skipping compression');
+        return;
+      }
+      
+      // Compress using GZIP
+      final compressedData = GZipEncoder().encode(originalBytes);
+      if (compressedData.isEmpty) {
+        await LoggerService.error('GZIP compression failed - no compressed data generated');
+        return;
+      }
+      
+      // Create compressed file path (.csv.gz)
+      final compressedPath = '${originalFile.path}.gz';
+      final compressedFile = File(compressedPath);
+      
+      // Write compressed data
+      await compressedFile.writeAsBytes(compressedData);
+      
+      // Verify compressed file was created successfully
+      if (!await compressedFile.exists()) {
+        await LoggerService.error('Failed to create compressed file: $compressedPath');
+        return;
+      }
+      
+      final compressedSize = compressedData.length;
+      final compressionRatio = ((originalSize - compressedSize) / originalSize * 100);
+      
+      // Test decompression to verify data integrity
+      try {
+        final decompressedData = GZipDecoder().decodeBytes(compressedData);
+        final dataIntact = decompressedData.length == originalBytes.length;
+        
+        if (!dataIntact) {
+          await LoggerService.error('Data integrity check failed - decompressed size mismatch');
+          return;
+        }
+      } catch (e) {
+        await LoggerService.error('Data integrity check failed - decompression error: $e');
+        return;
+      }
+      
+      // Delete original file only after successful compression and verification
+      await originalFile.delete();
+      
+      await LoggerService.info('CSV compression completed successfully:');
+      await LoggerService.info('  Original size: ${(originalSize / 1024 / 1024).toStringAsFixed(1)} MB');
+      await LoggerService.info('  Compressed size: ${(compressedSize / 1024 / 1024).toStringAsFixed(1)} MB');
+      await LoggerService.info('  Compression ratio: ${compressionRatio.toStringAsFixed(1)}%');
+      await LoggerService.info('  Compressed file: $compressedPath');
+      
+    } catch (e) {
+      await LoggerService.error('CSV compression failed: $e');
+      await LoggerService.info('Original CSV file preserved due to compression failure');
+      // Original file is preserved if compression fails
+    }
+  }
 
   Widget _buildLegend() {
     return Column(
