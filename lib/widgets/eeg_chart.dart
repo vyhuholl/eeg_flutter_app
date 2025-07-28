@@ -13,25 +13,17 @@ class XAxisRange {
   const XAxisRange({required this.min, required this.max});
 }
 
-/// Chart modes for different screens
-enum EEGChartMode {
-  main,       // Main screen with focus + relaxation lines
-  meditation, // Meditation screen with Pope + BTR/ATR/GTR lines
-}
-
 /// Real-time EEG chart widget with time-based visualization
 class EEGChart extends StatelessWidget {
   final double height;
   final bool showGridLines;
   final bool showAxes;
-  final EEGChartMode chartMode;
 
   const EEGChart({
     super.key,
     this.height = 440,
     this.showGridLines = true,
     this.showAxes = true,
-    this.chartMode = EEGChartMode.main,
   });
 
   @override
@@ -56,9 +48,7 @@ class EEGChart extends StatelessWidget {
   }
 
   LineChartData _buildLineChartData(EEGDataProvider eegProvider, ConnectionProvider connectionProvider) {
-    final lineChartData = chartMode == EEGChartMode.meditation 
-        ? _buildMeditationChartData(eegProvider, connectionProvider)
-        : _buildMainChartData(eegProvider, connectionProvider);
+    final lineChartData = _buildMainChartData(eegProvider, connectionProvider);
     
     if (lineChartData.isEmpty) {
       return _buildEmptyChart();
@@ -256,120 +246,6 @@ class EEGChart extends StatelessWidget {
     return relaxationData;
   }
 
-  /// Build meditation screen chart data with Pope, BTR, ATR, GTR lines
-  List<LineChartBarData> _buildMeditationChartData(EEGDataProvider eegProvider, ConnectionProvider connectionProvider) {
-    final jsonSamples = eegProvider.dataProcessor.getLatestJsonSamples();
-    final connectionStartTime = connectionProvider.connectionStartTime;
-    
-    if (jsonSamples.isEmpty || connectionStartTime == null) return [];
-    
-    // Filter to show last 120 seconds of data, or all data since connection if less than 120 seconds
-    final now = DateTime.now();
-    final timeSinceConnection = now.difference(connectionStartTime).inSeconds;
-    
-    // For moving average calculation, we need extra data when displaying 120-second window
-    List<EEGJsonSample> samplesForMovingAverage;
-    if (timeSinceConnection > 120) {
-      // Get 130 seconds of data for moving average calculation (extra 10 seconds for window)
-      final movingAverageCutoffTime = now.millisecondsSinceEpoch - (130 * 1000);
-      samplesForMovingAverage = jsonSamples.where((sample) => 
-        sample.absoluteTimestamp.millisecondsSinceEpoch >= movingAverageCutoffTime).toList();
-    } else {
-      // If less than 120 seconds since connection, use all available data
-      samplesForMovingAverage = jsonSamples.where((sample) =>
-        sample.absoluteTimestamp.millisecondsSinceEpoch >= connectionStartTime.millisecondsSinceEpoch).toList();
-    }
-    
-    if (samplesForMovingAverage.isEmpty) return [];
-    
-    // Calculate meditation-specific lines
-    final popeData = _calculateFocusMovingAverage(samplesForMovingAverage, connectionStartTime); // Reuse for Pope line
-    
-    // For non-moving average lines, filter to show only last 120 seconds
-    final displayCutoffTime = timeSinceConnection > 120 
-        ? now.millisecondsSinceEpoch - (120 * 1000)
-        : connectionStartTime.millisecondsSinceEpoch;
-        
-    final recentSamples = jsonSamples.where((sample) => 
-      sample.absoluteTimestamp.millisecondsSinceEpoch >= displayCutoffTime).toList();
-    
-    final btrData = <FlSpot>[];
-    final atrData = <FlSpot>[];
-    final gtrData = <FlSpot>[];
-    
-    // Calculate BTR, ATR, GTR lines (theta-based ratios) using relative time with fractional seconds
-    for (final sample in recentSamples) {
-      final relativeTimeSeconds = sample.absoluteTimestamp.difference(connectionStartTime).inMilliseconds.toDouble() / 1000.0;
-      
-      btrData.add(FlSpot(relativeTimeSeconds, sample.btr));
-      atrData.add(FlSpot(relativeTimeSeconds, sample.atr));
-      gtrData.add(FlSpot(relativeTimeSeconds, sample.gtr));
-    }
-    
-    // Filter the Pope moving average results to show only the last 120 seconds
-    final popeDisplayCutoffTime = timeSinceConnection > 120 
-        ? (timeSinceConnection - 120).toDouble()
-        : 0.0;
-    
-    final filteredPopeData = popeData.where((spot) => spot.x >= popeDisplayCutoffTime).toList();
-    
-    final lines = <LineChartBarData>[];
-    
-    // Add BTR line (orange) if we have data - moved up to draw below Pope line
-    if (btrData.isNotEmpty) {
-      lines.add(LineChartBarData(
-        spots: btrData,
-        isCurved: false,
-        color: const Color(0xFFFF9500), // Orange
-        barWidth: 1.0, // Made thinner
-        isStrokeCapRound: false,
-        dotData: const FlDotData(show: false),
-        belowBarData: BarAreaData(show: false),
-      ));
-    }
-    
-    // Add ATR line (blue) if we have data - moved up to draw below Pope line
-    if (atrData.isNotEmpty) {
-      lines.add(LineChartBarData(
-        spots: atrData,
-        isCurved: false,
-        color: const Color(0xFF007AFF), // Blue
-        barWidth: 1.0, // Made thinner
-        isStrokeCapRound: false,
-        dotData: const FlDotData(show: false),
-        belowBarData: BarAreaData(show: false),
-      ));
-    }
-    
-    // Add GTR line (red) if we have data - moved up to draw below Pope line
-    if (gtrData.isNotEmpty) {
-      lines.add(LineChartBarData(
-        spots: gtrData,
-        isCurved: false,
-        color: const Color(0xFFFF3B30), // Red
-        barWidth: 1.0, // Made thinner
-        isStrokeCapRound: false,
-        dotData: const FlDotData(show: false),
-        belowBarData: BarAreaData(show: false),
-      ));
-    }
-    
-    // Add Pope line (violet) on top if we have data
-    if (filteredPopeData.isNotEmpty) {
-      lines.add(LineChartBarData(
-        spots: filteredPopeData,
-        isCurved: false,
-        color: const Color(0xFFBF5AF2), // Violet
-        barWidth: 1.0, // Made thinner
-        isStrokeCapRound: false,
-        dotData: const FlDotData(show: false),
-        belowBarData: BarAreaData(show: false),
-      ));
-    }
-    
-    return lines;
-  }
-
   /// Calculate X-axis range for 120-second time window
   XAxisRange _calculateXAxisRange(DateTime? connectionStartTime) {
     if (connectionStartTime == null) {
@@ -489,30 +365,14 @@ class EEGChart extends StatelessWidget {
               final seconds = spot.x.toInt();
               final timeStr = '${seconds}s';
               
-              // Determine line type based on color and chart mode
+              // Determine line type based on color
               String lineType;
-              if (chartMode == EEGChartMode.meditation) {
-                // Meditation chart colors
-                if (spot.bar.color == const Color(0xFFBF5AF2)) {
-                  lineType = 'Pope';
-                } else if (spot.bar.color == const Color(0xFFFF9500)) {
-                  lineType = 'BTR';
-                } else if (spot.bar.color == const Color(0xFF007AFF)) {
-                  lineType = 'ATR';
-                } else if (spot.bar.color == const Color(0xFFFF3B30)) {
-                  lineType = 'GTR';
-                } else {
-                  lineType = 'Неизвестно';
-                }
+              if (spot.bar.color == const Color(0xFFBF5AF2)) {
+                lineType = 'Фокус';
+              } else if (spot.bar.color == const Color(0xFF32D74B)) {
+                lineType = 'Расслабление';
               } else {
-                // Main chart colors
-                if (spot.bar.color == const Color(0xFFBF5AF2)) {
-                  lineType = 'Фокус';
-                } else if (spot.bar.color == const Color(0xFF32D74B)) {
-                  lineType = 'Расслабление';
-                } else {
-                  lineType = 'Неизвестно';
-                }
+                lineType = 'Неизвестно';
               }
               
               return LineTooltipItem(

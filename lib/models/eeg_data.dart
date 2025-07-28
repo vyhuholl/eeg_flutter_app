@@ -11,10 +11,7 @@ class EEGJsonSample {
   final int alpha;
   final int beta;
   final int gamma;
-  final double btr;    // beta / theta (0 if theta is 0)
-  final double atr;    // alpha / theta (0 if theta is 0)
   final double pope;   // beta / (theta + alpha) (0 if theta is 0 and alpha is 0)
-  final double gtr;    // gamma / theta (0 if theta is 0)
   final double rab;    // alpha / beta (0 if beta is 0)
 
   const EEGJsonSample({
@@ -25,10 +22,7 @@ class EEGJsonSample {
     required this.alpha,
     required this.beta,
     required this.gamma,
-    required this.btr,
-    required this.atr,
     required this.pope,
-    required this.gtr,
     required this.rab,
   });
 
@@ -60,10 +54,7 @@ class EEGJsonSample {
     int gamma = json['g1'];
 
     // Calculate brainwave ratios with division by zero protection
-    double btr = theta == 0 ? 0.0 : beta.toDouble() / theta.toDouble();
-    double atr = theta == 0 ? 0.0 : alpha.toDouble() / theta.toDouble();
     double pope = (theta == 0 && alpha == 0) ? 0.0 : beta.toDouble() / (theta.toDouble() + alpha.toDouble());
-    double gtr = theta == 0 ? 0.0 : gamma.toDouble() / theta.toDouble();
     double rab = beta == 0 ? 0.0 : alpha.toDouble() / beta.toDouble();
 
     // Process time delta to absolute timestamp
@@ -77,10 +68,7 @@ class EEGJsonSample {
       alpha: alpha,
       beta: beta,
       gamma: gamma,
-      btr: btr,
-      atr: atr,
       pope: pope,
-      gtr: gtr,
       rab: rab,
     );
   }
@@ -93,10 +81,7 @@ class EEGJsonSample {
       'alpha': alpha,
       'beta': beta,
       'gamma': gamma,
-      'btr': btr,
-      'atr': atr,
       'pope': pope,
-      'gtr': gtr,
       'rab': rab,
       'absoluteTimestamp': absoluteTimestamp.millisecondsSinceEpoch,
     };
@@ -104,7 +89,7 @@ class EEGJsonSample {
 
   @override
   String toString() {
-    return 'EEGJsonSample(eegValue: $eegValue, delta: $delta, theta: $theta, alpha: $alpha, beta: $beta, gamma: $gamma, btr: $btr, atr: $atr, pope: $pope, gtr: $gtr, rab: $rab)';
+    return 'EEGJsonSample(eegValue: $eegValue, delta: $delta, theta: $theta, alpha: $alpha, beta: $beta, gamma: $gamma, pope: $pope, rab: $rab)';
   }
 }
 
@@ -290,10 +275,7 @@ class EEGJsonBuffer {
       alpha: 0,
       beta: 0,
       gamma: 0,
-      btr: 0.0,
-      atr: 0.0,
       pope: 0.0,
-      gtr: 0.0,
       rab: 0.0,
     ));
 

@@ -1,8 +1,6 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../widgets/eeg_chart.dart';
 import '../widgets/electrode_status_widget.dart';
 import '../providers/eeg_data_provider.dart';
 import '../models/eeg_data.dart';
@@ -164,182 +162,19 @@ class _MeditationScreenState extends State<MeditationScreen> {
     return newSize.clamp(minSize, maxSize);
   }
 
-  Widget _buildLegend() {
-    return Column(
-      children: [
-        // First row: Pope and BTR
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Pope indicator (violet)
-            Row(
-              children: [
-                Container(
-                  width: 16,
-                  height: 3,
-                  color: const Color(0xFFBF5AF2), // Violet
-                ),
-                const SizedBox(width: 8),
-                const Text(
-                  'Pope',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-            
-            const SizedBox(width: 24),
-            
-            // BTR indicator (orange)
-            Row(
-              children: [
-                Container(
-                  width: 16,
-                  height: 3,
-                  color: const Color(0xFFFF9500), // Orange
-                ),
-                const SizedBox(width: 8),
-                const Text(
-                  'BTR',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-        
-        const SizedBox(height: 8),
-        
-        // Second row: ATR and GTR
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // ATR indicator (blue)
-            Row(
-              children: [
-                Container(
-                  width: 16,
-                  height: 3,
-                  color: const Color(0xFF007AFF), // Blue
-                ),
-                const SizedBox(width: 8),
-                const Text(
-                  'ATR',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-            
-            const SizedBox(width: 24),
-            
-            // GTR indicator (red)
-            Row(
-              children: [
-                Container(
-                  width: 16,
-                  height: 3,
-                  color: const Color(0xFFFF3B30), // Red
-                ),
-                const SizedBox(width: 8),
-                const Text(
-                  'GTR',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
   Widget _buildCenterContent() {
-    // For relaxation meditation: always show only circle (no graphs even in debug mode)
-    if (widget.meditationType == MeditationType.relaxation) {
-      return Center(
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 400),
-          curve: Curves.easeInOut,
-          width: _currentCircleSize,
-          height: _currentCircleSize,
-          child: Image.asset(
-            'assets/images/circle.png',
-            fit: BoxFit.contain,
-          ),
+    return Center(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeInOut,
+        width: _currentCircleSize,
+        height: _currentCircleSize,
+        child: Image.asset(
+          'assets/images/circle.png',
+          fit: BoxFit.contain,
         ),
-      );
-    }
-    
-    // For concentration meditation: show charts in debug mode
-    if (kDebugMode) {
-      // Debug mode: show circle + enhanced EEG chart side by side
-      return Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          // Animated circle image on the left
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 400),
-            curve: Curves.easeInOut,
-            width: _currentCircleSize,
-            height: _currentCircleSize,
-            child: Image.asset(
-              'assets/images/circle.png',
-              fit: BoxFit.contain,
-            ),
-          ),
-          
-          // Enhanced EEG chart with legend on the right
-          Column(
-            children: [
-              // EEG chart - bigger and wider with meditation mode
-              const SizedBox(
-                width: 350,
-                child: EEGChart(
-                  height: 250,
-                  showGridLines: true,
-                  showAxes: false,
-                  chartMode: EEGChartMode.meditation,
-                ),
-              ),
-              
-              const SizedBox(height: 8),
-              
-              // Legend below the chart
-              SizedBox(
-                width: 350,
-                child: _buildLegend(),
-              ),
-            ],
-          ),
-        ],
-      );
-    } else {
-      // Normal mode: show only centered circle
-      return Center(
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 400),
-          curve: Curves.easeInOut,
-          width: _currentCircleSize,
-          height: _currentCircleSize,
-          child: Image.asset(
-            'assets/images/circle.png',
-            fit: BoxFit.contain,
-          ),
-        ),
-      );
-    }
+      ),
+    );
   }
 
   @override
