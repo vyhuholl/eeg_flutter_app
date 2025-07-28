@@ -274,7 +274,7 @@ class ValidationConstants {
   static const double minValidEegValue = 500.0;
   
   /// Maximum valid EEG value (inclusive)
-  static const double maxValidEegValue = 2000.0;
+  static const double maxValidEegValue = 3000.0;
   
   /// Maximum allowed variance for valid electrode contact
   static const double maxAllowedVariance = 500.0;
