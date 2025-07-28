@@ -1,6 +1,7 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../models/validation_models.dart';
-import '../services/electrode_validation_service.dart';
+import '../services/electrode_validation_isolate.dart';
 import 'eeg_data_provider.dart';
 
 /// Provider for managing electrode validation state and operations
@@ -11,17 +12,26 @@ class ElectrodeValidationProvider with ChangeNotifier {
   /// Most recent validation result
   ValidationResult? _lastValidationResult;
   
-  /// Service for performing statistical validation
-  final ElectrodeValidationService _validationService = ElectrodeValidationService();
+  /// Background isolate service for continuous validation
+  final ElectrodeValidationIsolateService _isolateService = ElectrodeValidationIsolateService();
   
   /// Reference to EEG data provider for accessing data
   EEGDataProvider? _eegDataProvider;
   
-  /// Whether the provider has been initialized
+    /// Whether the provider has been initialized
   bool _isInitialized = false;
+
+  /// Timer for feeding data to the isolate
+  Timer? _dataFeedTimer;
+
+  /// Subscription to isolate validation results
+  StreamSubscription<ElectrodeValidationResult>? _validationSubscription;
 
   /// Get the current validation state
   ValidationState get currentState => _currentState;
+  
+  /// Whether the provider has been initialized
+  bool get isInitialized => _isInitialized;
   
   /// Get the last validation result (may be null)
   ValidationResult? get lastValidationResult => _lastValidationResult;
@@ -49,58 +59,12 @@ class ElectrodeValidationProvider with ChangeNotifier {
     _eegDataProvider = eegDataProvider;
     _isInitialized = true;
     
+    // Start continuous validation
+    _startContinuousValidation();
+    
     // Set initial state based on data availability
     _updateStateBasedOnDataAvailability();
     notifyListeners();
-  }
-
-  /// Start the electrode validation process
-  Future<void> startValidation() async {
-    if (!_isInitialized) {
-      throw StateError('ElectrodeValidationProvider must be initialized before starting validation');
-    }
-    
-    if (_eegDataProvider == null) {
-      throw StateError('EEG data provider is not available');
-    }
-    
-    // Check if validation can be started
-    if (!canStartValidation) {
-      _updateState(ValidationState.insufficientData);
-      _lastValidationResult = ValidationResult.insufficientData();
-      notifyListeners();
-      return;
-    }
-    
-    try {
-      // Update state to validating
-      _updateState(ValidationState.validating);
-      notifyListeners();
-      
-      // Get the last 10 seconds of EEG data
-      final samples = _eegDataProvider!.dataProcessor.getLatestJsonSamples();
-      
-      // Take only the last 10 seconds worth of data (1000 samples at 100Hz)
-      final recentSamples = samples.length > ValidationConstants.minSamplesRequired
-          ? samples.sublist(samples.length - ValidationConstants.minSamplesRequired)
-          : samples;
-      
-      // Perform validation using the service
-      final result = await _validationService.validateElectrodes(recentSamples);
-      
-      // Update state based on result
-      _lastValidationResult = result;
-      _updateState(result.state);
-      
-      notifyListeners();
-      
-    } catch (e) {
-      // Handle errors during validation
-      debugPrint('Error during electrode validation: $e');
-      _lastValidationResult = ValidationResult.connectionLost();
-      _updateState(ValidationState.connectionLost);
-      notifyListeners();
-    }
   }
   
   /// Reset validation state to idle
@@ -142,45 +106,71 @@ class ElectrodeValidationProvider with ChangeNotifier {
       debugPrint('Electrode validation state changed to: $newState');
     }
   }
-  
-  /// Get debug information for the current validation state
-  Map<String, dynamic> getDebugInfo() {
-    final Map<String, dynamic> debugInfo = {
-      'currentState': _currentState.toString(),
-      'hasResult': hasValidationResult,
-      'canStart': canStartValidation,
-      'isInitialized': _isInitialized,
-    };
-    
-    if (_lastValidationResult != null) {
-      debugInfo['lastResult'] = {
-        'isValid': _lastValidationResult!.isValid,
-        'message': _lastValidationResult!.message,
-        'timestamp': _lastValidationResult!.timestamp.toIso8601String(),
-        'statistics': {
-          'variance': _lastValidationResult!.statistics.variance,
-          'minValue': _lastValidationResult!.statistics.minValue,
-          'maxValue': _lastValidationResult!.statistics.maxValue,
-          'sampleCount': _lastValidationResult!.statistics.sampleCount,
-          'validRangeCount': _lastValidationResult!.statistics.validRangeCount,
-          'validRangePercentage': _lastValidationResult!.statistics.validRangePercentage,
-        },
-      };
+
+  /// Start continuous validation using background isolate
+  Future<void> _startContinuousValidation() async {
+    try {
+      // Start the isolate
+      await _isolateService.start();
+      
+      // Listen to validation results
+      _validationSubscription = _isolateService.resultStream?.listen((result) {
+        debugPrint('ElectrodeValidation: Received result - valid: ${result.isValid}, status: ${result.status}');
+        
+        // Convert isolate result to validation result
+        _lastValidationResult = ValidationResult(
+          isValid: result.isValid,
+          state: result.isValid ? ValidationState.validationPassed : ValidationState.validationFailed,
+          message: result.status,
+          statistics: ValidationStatistics(
+            variance: result.variance,
+            minValue: result.minValue.toInt(),
+            maxValue: result.maxValue.toInt(),
+            sampleCount: 100, // 1 second at 100Hz
+            validRangeCount: result.isValid ? 100 : 0,
+          ),
+          timestamp: result.timestamp,
+        );
+        
+        _updateState(_lastValidationResult!.state);
+        notifyListeners();
+      });
+      
+      // Start timer to feed data to isolate
+      _dataFeedTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
+        if (_eegDataProvider != null) {
+          final samples = _eegDataProvider!.dataProcessor.getLatestJsonSamples();
+          if (samples.isNotEmpty) {
+            debugPrint('ElectrodeValidation: Feeding ${samples.length} samples to isolate');
+            _isolateService.addEEGData(samples);
+          } else {
+            debugPrint('ElectrodeValidation: No samples available to feed');
+          }
+        } else {
+          debugPrint('ElectrodeValidation: EEG data provider is null');
+        }
+      });
+      
+    } catch (e) {
+      debugPrint('Error starting continuous validation: $e');
     }
-    
-    if (_eegDataProvider != null) {
-      final samples = _eegDataProvider!.dataProcessor.getLatestJsonSamples();
-      debugInfo['availableSamples'] = samples.length;
-      debugInfo['requiredSamples'] = ValidationConstants.minSamplesRequired;
-    }
-    
-    return debugInfo;
+  }
+
+  /// Stop continuous validation
+  void _stopContinuousValidation() {
+    _dataFeedTimer?.cancel();
+    _dataFeedTimer = null;
+    _validationSubscription?.cancel();
+    _validationSubscription = null;
+    _isolateService.stop();
   }
   
   /// Dispose of resources
   @override
   void dispose() {
+    _stopContinuousValidation();
     _eegDataProvider = null;
+    _isolateService.dispose();
     super.dispose();
   }
 } 

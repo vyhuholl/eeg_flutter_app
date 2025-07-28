@@ -4,8 +4,8 @@ import '../providers/eeg_data_provider.dart';
 import '../providers/connection_provider.dart';
 import '../providers/electrode_validation_provider.dart';
 import '../widgets/eeg_chart.dart';
+import '../widgets/electrode_status_widget.dart';
 import 'meditation_selection_screen.dart';
-import 'electrode_validation_screen.dart';
 
 /// Main screen of the EEG Flutter app with start screen and EEG chart
 class MainScreen extends StatefulWidget {
@@ -18,13 +18,11 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
-    return Consumer2<ConnectionProvider, ElectrodeValidationProvider>(
-      builder: (context, connectionProvider, validationProvider, child) {
-        // Navigation logic based on connection and validation state
+    return Consumer<ConnectionProvider>(
+      builder: (context, connectionProvider, child) {
+        // Navigation logic based on connection state only
         if (!connectionProvider.isConnected) {
           return _buildStartScreen(context, connectionProvider);
-        } else if (!validationProvider.isLastValidationSuccessful) {
-          return const ElectrodeValidationScreen();
         } else {
           return _buildEEGScreen(context, connectionProvider);
         }
@@ -108,123 +106,104 @@ class _MainScreenState extends State<MainScreen> {
   Widget _buildEEGScreen(BuildContext context, ConnectionProvider connectionProvider) {
     return Scaffold(
       backgroundColor: Colors.black,
-      body: Consumer<EEGDataProvider>(
-        builder: (context, eegProvider, child) {
-          final isReceivingData = eegProvider.isReceivingJsonData;
-          
-          return SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Status indicator in top left corner
-                  _buildConnectionStatus(isReceivingData),
+      body: Stack(
+        children: [
+          Consumer<EEGDataProvider>(
+            builder: (context, eegProvider, child) {
+              final isReceivingData = eegProvider.isReceivingJsonData;
+              
+              return SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 40), // Space for status widget
+                      
+                      const SizedBox(height: 20),
                   
-                  const SizedBox(height: 20),
-                  
-                  // Centered meditation training button
-                  Center(
-                    child: Column(
-                      children: [
-                        ElevatedButton(
-                          onPressed: () => _startMeditationTraining(),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF0A84FF),
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
+                      // Centered meditation training button
+                      Center(
+                        child: Column(
+                          children: [
+                            ElevatedButton(
+                              onPressed: () => _startMeditationTraining(),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF0A84FF),
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                              child: const Text(
+                                'Пройти тренинг медитации',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
                             ),
-                          ),
-                          child: const Text(
-                            'Пройти тренинг медитации',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
+                            
+                            const SizedBox(height: 12),
+                            
+                            // Instruction text
+                            const Text(
+                              'Подготовьте музыку для медитации, если она нужна.\nТренинг начнётся сразу',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                              ),
                             ),
-                          ),
+                          ],
                         ),
-                        
-                        const SizedBox(height: 12),
-                        
-                        // Instruction text
-                        const Text(
-                          'Подготовьте музыку для медитации, если она нужна.\nТренинг начнётся сразу',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
+                      ),
+                      
+                      const SizedBox(height: 30),
+                      
+                      // EEG Chart (only show if receiving data)
+                      if (isReceivingData) ...[
+                        Center(
+                          child: Column(
+                            children: [
+                              // EEG Chart with fixed dimensions
+                              Container(
+                                width: 960,
+                                height: 440,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF2C2C2E),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: EEGChart(
+                                  showGridLines: true,
+                                  showAxes: true,
+                                ),
+                              ),
+                              
+                              const SizedBox(height: 12),
+                              
+                              // Legend
+                              _buildChartLegend(),
+                            ],
                           ),
                         ),
                       ],
-                    ),
+                    ],
                   ),
-                  
-                  const SizedBox(height: 30),
-                  
-                  // EEG Chart (only show if receiving data)
-                  if (isReceivingData) ...[
-                    Center(
-                      child: Column(
-                        children: [
-                          // EEG Chart with fixed dimensions
-                          Container(
-                            width: 960,
-                            height: 440,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF2C2C2E),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: EEGChart(
-                              showGridLines: true,
-                              showAxes: true,
-                            ),
-                          ),
-                          
-                          const SizedBox(height: 12),
-                          
-                          // Legend
-                          _buildChartLegend(),
-                        ],
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          );
-        },
+                ),
+              );
+            },
+          ),
+          // Electrode status widget in top left corner
+          const ElectrodeStatusWidget(),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _disconnectFromDevice(),
         backgroundColor: Colors.red,
         child: const Icon(Icons.close, color: Colors.white),
       ),
-    );
-  }
-
-  Widget _buildConnectionStatus(bool isReceivingData) {
-    return Row(
-      children: [
-        Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(
-            color: isReceivingData ? Colors.green : Colors.red,
-            shape: BoxShape.circle,
-          ),
-        ),
-        const SizedBox(width: 8),
-        Text(
-          isReceivingData ? 'Электроды подключены' : 'Электроды не подключены',
-          style: TextStyle(
-            color: isReceivingData ? Colors.green : Colors.red,
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
     );
   }
 
@@ -308,4 +287,6 @@ class _MainScreenState extends State<MainScreen> {
       ),
     );
   }
+
+
 }

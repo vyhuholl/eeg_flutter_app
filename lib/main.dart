@@ -447,18 +447,19 @@ class EEGApp extends StatelessWidget {
         
         // Electrode Validation Provider (depends on EEG Data Provider)
         ChangeNotifierProxyProvider<EEGDataProvider, ElectrodeValidationProvider>(
-          create: (context) {
-            final provider = ElectrodeValidationProvider();
-            provider.initialize(context.read<EEGDataProvider>());
-            return provider;
-          },
+          create: (context) => ElectrodeValidationProvider(),
           update: (context, eegDataProvider, validationProvider) {
             if (validationProvider == null) {
               final provider = ElectrodeValidationProvider();
               provider.initialize(eegDataProvider);
               return provider;
+            } else {
+              // Ensure provider is always initialized with latest EEG provider
+              if (!validationProvider.isInitialized) {
+                validationProvider.initialize(eegDataProvider);
+              }
+              return validationProvider;
             }
-            return validationProvider;
           },
         ),
         

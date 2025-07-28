@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../widgets/eeg_chart.dart';
+import '../widgets/electrode_status_widget.dart';
 import '../providers/eeg_data_provider.dart';
 import '../models/eeg_data.dart';
 import 'meditation_selection_screen.dart';
@@ -347,10 +348,12 @@ class _MeditationScreenState extends State<MeditationScreen> {
       builder: (context, eegProvider, child) {
         return Scaffold(
           backgroundColor: Colors.black,
-          body: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
+          body: Stack(
+            children: [
+              SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
                 children: [
                   const Spacer(flex: 1),
                   
@@ -410,8 +413,12 @@ class _MeditationScreenState extends State<MeditationScreen> {
               ),
             ),
           ),
-        );
-      },
+          // Electrode status widget in top left corner
+          const ElectrodeStatusWidget(),
+        ],
+      ),
     );
+  },
+);
   }
 } 

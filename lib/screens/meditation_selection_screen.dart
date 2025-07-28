@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/electrode_status_widget.dart';
 import 'meditation_screen.dart';
 
 /// Enumeration for meditation types
@@ -15,10 +16,12 @@ class MeditationSelectionScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
+      body: Stack(
+        children: [
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const Text(
@@ -98,7 +101,11 @@ class MeditationSelectionScreen extends StatelessWidget {
           ),
         ),
       ),
-    );
+      // Electrode status widget in top left corner
+      const ElectrodeStatusWidget(),
+    ],
+  ),
+);
   }
 
   void _startMeditation(BuildContext context, MeditationType type) {
