@@ -86,9 +86,6 @@ class ConnectionProvider extends ChangeNotifier {
   
   /// Current connection status message
   String get statusMessage => _currentState.statusMessage;
-  
-  /// Network statistics
-  NetworkStats get networkStats => _udpReceiver.networkStats;
 
   /// JSON packet count
   int get jsonPacketsReceived => _jsonPacketsReceived;
@@ -263,44 +260,6 @@ class ConnectionProvider extends ChangeNotifier {
     }
     
     return buffer.toString();
-  }
-
-  /// Get detailed network statistics
-  Map<String, dynamic> getDetailedStats() {
-    final stats = networkStats;
-    return {
-      'totalPacketsReceived': stats.totalPacketsReceived,
-      'totalPacketsLost': stats.totalPacketsLost,
-      'packetLossPercentage': stats.packetLossPercentage,
-      'averageDataRate': stats.averageDataRate,
-      'currentDataRate': stats.currentDataRate,
-      'connectionDuration': stats.connectionDuration.inSeconds,
-      'hasSignificantLoss': stats.hasSignificantLoss,
-      'jsonPacketsReceived': _jsonPacketsReceived,
-      'binaryPacketsReceived': _binaryPacketsReceived,
-    };
-  }
-
-  /// Check if connection is healthy
-  bool get isConnectionHealthy {
-    if (!_currentState.isConnected) return false;
-    
-    final stats = networkStats;
-    final timeSinceLastData = _currentState.timeSinceLastData;
-    
-    // Connection is healthy if:
-    // - Currently connected
-    // - Low packet loss (< 5%)
-    // - Recent data (< 5 seconds)
-    return stats.packetLossPercentage < 5.0 &&
-           (timeSinceLastData?.inSeconds ?? 0) < 5;
-  }
-
-  /// Get health status message
-  String get healthStatusMessage {
-    if (!_currentState.isConnected) return 'Disconnected';
-    if (!isConnectionHealthy) return 'Poor connection quality';
-    return 'Connection healthy';
   }
 
   @override

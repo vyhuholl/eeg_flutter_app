@@ -22,7 +22,6 @@ class UDPReceiver {
   bool _isRunning = false;
   
   // Statistics
-  int _sequenceNumber = 0;
   int _packetsReceived = 0;
   int _packetsLost = 0;
   int _jsonPacketsReceived = 0;
@@ -193,7 +192,6 @@ class UDPReceiver {
       final jsonSample = EEGJsonSample.fromJson(
         jsonString, 
         _timeDeltaProcessor, 
-        _sequenceNumber++
       );
       
       _jsonPacketsReceived++;
@@ -218,23 +216,13 @@ class UDPReceiver {
       final predictedTimestamp = _timeDeltaProcessor.handleMissingDelta();
       
       final fallbackSample = EEGJsonSample(
-        timeDelta: 100.0, // Default 100ms
-        eegValue: 0.0, // Neutral value
+        eegValue: 0, // Neutral value
         absoluteTimestamp: predictedTimestamp,
-        sequenceNumber: _sequenceNumber++,
-        d1: 0.0,
-        t1: 0.0,
-        t2: 0.0,
-        a1: 0.0,
-        a2: 0.0,
-        b1: 0.0,
-        b2: 0.0,
-        b3: 0.0,
-        g1: 0.0,
-        theta: 0.0,
-        alpha: 0.0,
-        beta: 0.0,
-        gamma: 0.0,
+        delta: 0,
+        theta: 0,
+        alpha: 0,
+        beta: 0,
+        gamma: 0,
         btr: 0.0,
         atr: 0.0,
         pope: 0.0,
@@ -297,7 +285,6 @@ class UDPReceiver {
   }
 
   void _resetStatistics() {
-    _sequenceNumber = 0;
     _packetsReceived = 0;
     _packetsLost = 0;
     _jsonPacketsReceived = 0;
@@ -305,20 +292,6 @@ class UDPReceiver {
     _lastDataReceived = null;
     _connectionStartTime = null;
     _packetTimes.clear();
-  }
-
-  /// Get current network statistics
-  NetworkStats get networkStats {
-    return NetworkStats(
-      totalPacketsReceived: _packetsReceived,
-      totalPacketsLost: _packetsLost,
-      averageDataRate: _calculateDataRate(),
-      currentDataRate: _calculateDataRate(),
-      startTime: _connectionStartTime ?? DateTime.now(),
-      connectionDuration: _connectionStartTime != null 
-        ? DateTime.now().difference(_connectionStartTime!)
-        : Duration.zero,
-    );
   }
 
   /// Get JSON-specific statistics

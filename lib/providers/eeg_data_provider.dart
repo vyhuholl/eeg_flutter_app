@@ -46,12 +46,7 @@ class EEGDataProvider with ChangeNotifier {
   
   List<EEGJsonSample> _latestJsonSamples = [];
   
-  final Map<int, List<FlSpot>> _chartData = {};
-  final Map<int, SignalQuality> _signalQuality = {};
-  
   // Display settings
-  final int _selectedChannel = 0;
-  final bool _showAllChannels = true;
   ChartConfig _chartConfig = const ChartConfig();
   
   // Performance optimization
@@ -70,12 +65,6 @@ class EEGDataProvider with ChangeNotifier {
   
   /// Latest JSON EEG samples
   List<EEGJsonSample> get latestJsonSamples => _latestJsonSamples;
-
-  /// Chart data for visualization
-  Map<int, List<FlSpot>> get chartData => _chartData;
-  
-  /// Signal quality for each channel
-  Map<int, SignalQuality> get signalQuality => _signalQuality;
   
   /// Current EEG configuration
   EEGConfig get config => _dataProcessor.config;
@@ -84,8 +73,6 @@ class EEGDataProvider with ChangeNotifier {
   EEGDataProcessor get dataProcessor => _dataProcessor;
   
   /// Display settings
-  int get selectedChannel => _selectedChannel;
-  bool get showAllChannels => _showAllChannels;
   ChartConfig get chartConfig => _chartConfig;
   
   /// Chart visibility
@@ -210,13 +197,6 @@ class EEGDataProvider with ChangeNotifier {
     return _chartConfig.refreshRate;
   }
 
-  /// Filter controls
-  void applyFilter() {
-    final filtered = _dataProcessor.applyFiltering(_latestJsonSamples);
-    _latestJsonSamples = filtered;
-    notifyListeners();
-  }
-
   /// Data management
   void clearData() {
     _latestJsonSamples = [];
@@ -231,15 +211,6 @@ class EEGDataProvider with ChangeNotifier {
     final sampleCount = _latestJsonSamples.length;
     
     return 'EEG Samples: $sampleCount';
-  }
-
-  /// Get signal quality summary
-  String getSignalQualitySummary() {
-    if (_latestJsonSamples.isEmpty) return 'No signal data';
-    
-    final samples = _latestJsonSamples.take(100).toList();
-    final quality = _dataProcessor.assessSignalQuality(samples);
-    return 'Signal Quality: ${quality.qualityText}';
   }
 
   @override

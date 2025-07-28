@@ -6,7 +6,7 @@ class ElectrodeValidationService {
   /// Validate electrode connection quality using EEG data samples
   /// 
   /// Analyzes the last 10 seconds of EEG data to check:
-  /// - All eegValue readings are between 500-2000
+  /// - All eegValue readings are between 500-3000
   /// - Variance of eegValue is less than 500
   /// 
   /// Returns [ValidationResult] with success/failure and detailed statistics
@@ -46,14 +46,14 @@ class ElectrodeValidationService {
   }
   
   /// Calculate comprehensive statistics for EEG values using Welford's algorithm
-  ValidationStatistics _calculateStatistics(List<double> values) {
+  ValidationStatistics _calculateStatistics(List<int> values) {
     if (values.isEmpty) {
       return ValidationStatistics.empty();
     }
     
     // Initialize values
-    double minVal = values.first;
-    double maxVal = values.first;
+    int minVal = values.first;
+    int maxVal = values.first;
     int validRangeCount = 0;
     
     // Calculate min, max, and valid range count in single pass
@@ -91,7 +91,7 @@ class ElectrodeValidationService {
     );
   }
   
-  /// Validate that all EEG values are within the valid range (500-2000)
+  /// Validate that all EEG values are within the valid range (500-3000)
   bool _validateRange(ValidationStatistics statistics) {
     // All values must be within the valid range
     return statistics.validRangeCount == statistics.sampleCount;
@@ -148,7 +148,6 @@ class ElectrodeValidationService {
       'sampleCount': statistics.sampleCount,
       'hasSufficientData': hasSufficientData(samples),
       'variance': statistics.variance,
-      'standardDeviation': statistics.standardDeviation,
       'minValue': statistics.minValue,
       'maxValue': statistics.maxValue,
       'validRangeCount': statistics.validRangeCount,

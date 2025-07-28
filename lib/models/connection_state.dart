@@ -109,36 +109,3 @@ class ConnectionState {
     return 'ConnectionState(status: $status, packets: $packetsReceived, rate: ${dataRate.toStringAsFixed(1)} pps)';
   }
 }
-
-/// Network statistics for monitoring connection quality
-class NetworkStats {
-  final int totalPacketsReceived;
-  final int totalPacketsLost;
-  final double averageDataRate;
-  final double currentDataRate;
-  final DateTime startTime;
-  final Duration connectionDuration;
-
-  const NetworkStats({
-    required this.totalPacketsReceived,
-    required this.totalPacketsLost,
-    required this.averageDataRate,
-    required this.currentDataRate,
-    required this.startTime,
-    required this.connectionDuration,
-  });
-
-  double get packetLossRate {
-    final total = totalPacketsReceived + totalPacketsLost;
-    if (total == 0) return 0.0;
-    return totalPacketsLost / total;
-  }
-
-  double get packetLossPercentage => packetLossRate * 100;
-
-  bool get hasSignificantLoss => packetLossPercentage > 1.0;
-
-  String get summary {
-    return 'Received: $totalPacketsReceived, Lost: $totalPacketsLost, Loss: ${packetLossPercentage.toStringAsFixed(1)}%';
-  }
-} 

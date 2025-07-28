@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'dart:math' as math;
 
 /// Enumeration of possible validation states for UI state management
 enum ValidationState {
@@ -80,22 +79,19 @@ class ValidationStatistics {
   final double variance;
   
   /// Minimum EEG value found in the analysis window
-  final double minValue;
+  final int minValue;
   
   /// Maximum EEG value found in the analysis window
-  final double maxValue;
+  final int maxValue;
   
   /// Total number of samples analyzed
   final int sampleCount;
   
-  /// Number of samples within the valid range (500-2000)
+  /// Number of samples within the valid range (500-3000)
   final int validRangeCount;
   
   /// Percentage of samples within valid range
   double get validRangePercentage => sampleCount > 0 ? (validRangeCount / sampleCount) * 100 : 0;
-  
-  /// Standard deviation (square root of variance)
-  double get standardDeviation => variance > 0 ? math.sqrt(variance) : 0;
 
   const ValidationStatistics({
     required this.variance,
@@ -108,7 +104,7 @@ class ValidationStatistics {
   /// Create ValidationStatistics with no data
   factory ValidationStatistics.empty() {
     return const ValidationStatistics(
-      variance: 0,
+      variance: 0.0,
       minValue: 0,
       maxValue: 0,
       sampleCount: 0,
@@ -119,8 +115,8 @@ class ValidationStatistics {
   /// Create a copy of this object with updated values
   ValidationStatistics copyWith({
     double? variance,
-    double? minValue,
-    double? maxValue,
+    int? minValue,
+    int? maxValue,
     int? sampleCount,
     int? validRangeCount,
   }) {
@@ -271,10 +267,10 @@ class ValidationResult {
 /// Constants used in electrode validation
 class ValidationConstants {
   /// Minimum valid EEG value (inclusive)
-  static const double minValidEegValue = 500.0;
+  static const int minValidEegValue = 500;
   
   /// Maximum valid EEG value (inclusive)
-  static const double maxValidEegValue = 3000.0;
+  static const int maxValidEegValue = 3000;
   
   /// Maximum allowed variance for valid electrode contact
   static const double maxAllowedVariance = 500.0;
@@ -289,7 +285,7 @@ class ValidationConstants {
   static const int sampleRateHz = 100;
 
   /// Check if an EEG value is within the valid range
-  static bool isValueInRange(double value) {
+  static bool isValueInRange(int value) {
     return value >= minValidEegValue && value <= maxValidEegValue;
   }
 
